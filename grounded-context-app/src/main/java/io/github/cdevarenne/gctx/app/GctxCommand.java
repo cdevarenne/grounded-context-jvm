@@ -41,6 +41,7 @@ import picocli.CommandLine.ParentCommand;
             GctxCommand.EntitiesCommand.class,
             GctxCommand.McpCommand.class,
             GctxCommand.EvalCommand.class,
+            GctxCommand.MeasureCommand.class,
         })
 public class GctxCommand implements Callable<Integer> {
 
@@ -200,6 +201,82 @@ public class GctxCommand implements Callable<Integer> {
             }
             // A failure exits non-zero so this can gate a build; a declared deviation does not.
             return results.stream().anyMatch(r -> "FAIL".equals(r.verdict())) ? EXIT_REFUSAL : 0;
+        }
+    }
+
+    @Command(name = "measure",
+            description = "recompute the corpus-wide figures quoted in the findings")
+    static class MeasureCommand implements Callable<Integer> {
+        @ParentCommand GctxCommand parent;
+
+        @Override
+        public Integer call() {
+            var client = io.github.cdevarenne.gctx.app.es.ElasticsearchConfiguration.client();
+            if (client.isEmpty()) {
+                System.err.println("error: this needs Elasticsearch; set ES_URL and ES_API_KEY");
+                return EXIT_ERROR;
+            }
+            var sweep = new io.github.cdevarenne.gctx.app.eval.FindingsSweep(client.get());
+            Map<String, Object> report = sweep.report();
+            PrintWriter out = new PrintWriter(System.out, true);
+
+            if (parent.json) {
+                out.println(JsonWriter.write(report));
+                return 0;
+            }
+
+            out.println("index " + io.github.cdevarenne.gctx.app.es.ElasticsearchSettings.INDEX
+                    + ": " + report.get("chunks") + " chunks");
+            out.println();
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> mech = (Map<String, Object>) report.get("mechanism");
+            out.println("Finding 2 — why the subfield helps, on " + mech.get("term")
+                    + " (" + mech.get("target") + ")");
+            out.println("    matches on content        " + mech.get("content_matches")
+                    + " chunks   (punctuation stripped, so code samples collapse onto the prose mention)");
+            out.println("    matches on content.exact  " + mech.get("exact_matches")
+                    + " chunk    (punctuation kept, so only the bare prose mention matches)");
+            out.println("    rank of the defining chunk: content-only " + mech.get("rank_content_only")
+                    + " -> with exact " + mech.get("rank_with_exact"));
+
+            out.println();
+            out.println("Finding 2 — rank improved by the content.exact subfield");
+            out.println("  (tokens unique to one chunk, longer than 10 characters)");
+            @SuppressWarnings("unchecked")
+            Map<String, io.github.cdevarenne.gctx.app.eval.FindingsSweep.ShapeEffect> effects =
+                    (Map<String, io.github.cdevarenne.gctx.app.eval.FindingsSweep.ShapeEffect>)
+                            report.get("subfield_effect");
+            effects.forEach((shape, effect) -> out.printf("    %-12s %3d of %3d improved, %d regressed%n",
+                    shape, effect.improved(), effect.total(), effect.regressed()));
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> hidden = (Map<String, Object>) report.get("invisible_to_exact");
+            out.println();
+            out.println("  tokens matching `content` but INVISIBLE to `content.exact`");
+            out.println("  (hyphenated or underscored, at least 8 characters):");
+            out.println("    " + hidden.get("invisible") + " of " + hidden.get("total"));
+            @SuppressWarnings("unchecked")
+            List<String> examples = (List<String>) hidden.get("examples");
+            out.println("    first three alphabetically: "
+                    + String.join(", ", examples.subList(0, Math.min(3, examples.size()))));
+            @SuppressWarnings("unchecked")
+            Map<String, Boolean> documented = (Map<String, Boolean>) hidden.get("documented");
+            documented.forEach((token, present) -> out.printf(
+                    "    cited in findings.md: %-20s %s%n", token,
+                    present ? "in the set" : "ABSENT"));
+
+            out.println();
+            out.println("Finding 3 — fused vs pre-fusion score (floor = " + report.get("floor") + ")");
+            out.printf("  %-13s %7s %7s  query%n", "kind", "fused", "sparse");
+            @SuppressWarnings("unchecked")
+            List<io.github.cdevarenne.gctx.app.eval.FindingsSweep.Probe> probes =
+                    (List<io.github.cdevarenne.gctx.app.eval.FindingsSweep.Probe>) report.get("probes");
+            for (var probe : probes) {
+                out.printf("  %-13s %7.4f %7.2f  %s%n",
+                        probe.kind(), probe.fused(), probe.sparse(), probe.query());
+            }
+            return 0;
         }
     }
 

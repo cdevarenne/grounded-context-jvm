@@ -74,7 +74,7 @@ public final class HybridSemanticSearch implements SemanticSearch {
      * punctuation and hyphens, which tells those apart — and which also blinds it to any
      * identifier the corpus only ever writes inside quotes.
      */
-    static Retriever lexical(String query) {
+    public static Retriever lexical(String query) {
         Query bool = Query.of(q -> q.bool(b -> b
                 .should(s -> s.match(m -> m.field("content").query(query)))
                 .should(s -> s.match(m -> m.field("content.exact")
@@ -85,14 +85,14 @@ public final class HybridSemanticSearch implements SemanticSearch {
     }
 
     /** ELSER over the {@code semantic_text} field, via the preconfigured inference endpoint. */
-    static Retriever sparse(String query) {
+    public static Retriever sparse(String query) {
         Query semantic = Query.of(q -> q.semantic(s -> s.field("semantic").query(query)));
         return new Retriever(co.elastic.clients.elasticsearch._types.StandardRetriever
                 .of(r -> r.query(semantic)));
     }
 
     /** The RRF retriever body: BM25 and ELSER fused. */
-    static Retriever hybrid(String query) {
+    public static Retriever hybrid(String query) {
         return new Retriever(co.elastic.clients.elasticsearch._types.RRFRetriever.of(r -> r
                 .retrievers(
                         RRFRetrieverEntry.of(e -> e.retriever(lexical(query))),
