@@ -82,10 +82,10 @@ Finding 2 — rank improved by the content.exact subfield
     cited in findings.md: claude-sonnet-4-6    in the set
 ```
 
-The `0 of 87` is the important one. It is the figure that disproved the original
-"the analyzer splits `rank_constant` on the underscore" claim, and it is re-derived here rather
-than read back: each implementation enumerates the corpus tokens itself and counts what the
-subfield changes. An enumeration bug on one side would show up as a different denominator.
+The `0 of 87` is the important one. It is the measurement that settled the original hypothesis —
+that the standard analyzer splits `rank_constant` on the underscore — and it is re-derived here
+rather than read back: each implementation enumerates the corpus tokens itself and counts what
+the subfield changes. An enumeration defect on one side would show up as a different denominator.
 
 The regex patterns were copied to match, so agreement on them is weak evidence on its own. The
 enumeration, chunking and counting around them are separate code.
@@ -156,13 +156,18 @@ The bundle file contains the `T` form. PyYAML resolved that scalar to a `datetim
 `str()` then rendered it with a space. The result was not valid ISO-8601, and it was not what the
 file says. Provenance must quote its source. It must not reinterpret it.
 
+Neither implementation could surface this alone. Each was self-consistent, and each rendered
+what its own YAML library produced. Only the comparison made the difference visible.
+
 Both implementations now keep timestamp-shaped scalars as text. Python uses a loader without the
 timestamp resolver. This repo uses `LiteralTimestampResolver`. A second run of the same six MCP
 calls shows no differences.
 
-The same conversion is more dangerous on the JVM. SnakeYAML makes `stale_after: 2026-09-09` a
-`java.util.Date` at UTC midnight. In a negative-offset zone, that date reads back as 2026-09-08.
-Every staleness boundary would move one day earlier. Facts would be stale before their date. The
-ported tests found this on the first run. `BundleTest` pins both behaviours.
+The same conversion is more dangerous on the JVM, and this one is a different kind of finding:
+not a disagreement between implementations, but a defect the ported tests caught before it
+shipped. SnakeYAML makes `stale_after: 2026-09-09` a `java.util.Date` at UTC midnight. In a
+negative-offset zone, that date reads back as 2026-09-08. Every staleness boundary would move
+one day earlier, and facts would be stale before their date.
 
-Neither implementation could show the `verified_at` defect alone. Each one was self-consistent.
+The tests were ported before the code, which is why it surfaced on the first run. `BundleTest`
+pins both behaviours.
