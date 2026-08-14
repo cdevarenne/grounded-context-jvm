@@ -11,8 +11,8 @@ on Elasticsearch and reached over MCP.
 
 ## Why a second implementation
 
-The Java/Spring version makes is available for developers working with that tech stack. 
-Another aspect of having a different runtime is to check measured claims in the Python — rank
+The Java/Spring version makes this POC available for developers working with that tech stack. 
+Another aspect of having a different runtime is to check measured claims in the Python version — rank
 tables, score ranges, corpus-wide counts — and a single codebase cannot tell you whether those
 numbers describe the *index* or merely describe *itself*. A second implementation reading the
 same index, with its own regex engine, YAML parser and Elasticsearch client, can.
