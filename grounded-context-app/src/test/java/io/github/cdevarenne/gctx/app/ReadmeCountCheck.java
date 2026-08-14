@@ -38,14 +38,24 @@ public final class ReadmeCountCheck {
         Path readme = repo.resolve("README.md");
 
         if (!Files.isRegularFile(coreCount) || !Files.isRegularFile(appCount)) {
-            // A partial or filtered run has nothing meaningful to compare against. Name the
-            // paths: a silent skip that is really a broken path would defeat the whole check.
-            System.out.println("README test count: skipped, no full run recorded"
+            // A silent skip that is really a broken path would defeat the whole check, so
+            // name the paths that were looked in.
+            System.out.println("README test count: skipped, no run recorded"
                     + " (looked in " + coreCount + " and " + appCount + ")");
             return;
         }
 
-        long ran = count(coreCount) + count(appCount);
+        String core = Files.readString(coreCount).strip();
+        String app = Files.readString(appCount).strip();
+        if (TestCountRecorder.PARTIAL.equals(core) || TestCountRecorder.PARTIAL.equals(app)) {
+            // Without credentials the cluster tests skip, and a class-level skip hides its
+            // tests entirely — so this run cannot confirm a total that describes a full one.
+            System.out.println("README test count: skipped, this run was partial "
+                    + "(no Elasticsearch credentials, or no reference bundle alongside)");
+            return;
+        }
+
+        long ran = Long.parseLong(core) + Long.parseLong(app);
         Matcher matcher = PUBLISHED.matcher(Files.readString(readme));
         if (!matcher.find()) {
             throw new IllegalStateException("the README no longer states a test count");
@@ -59,7 +69,4 @@ public final class ReadmeCountCheck {
         System.out.println("README test count: " + published + ", matches the build");
     }
 
-    private static long count(Path path) throws Exception {
-        return Long.parseLong(Files.readString(path).strip());
-    }
 }

@@ -1,6 +1,6 @@
 # Parity with the Python implementation
 
-This repo exists to cross-check the numbers the Python repo publishes. A single codebase cannot
+This repo provdes a cross-check of the numbers the Python repo publishes. A single codebase cannot
 distinguish "this is true of the index" from "this is true of my code"; two can.
 
 Both implementations read the **same Elasticsearch index** (`grounded-context-corpus`, 320
@@ -19,7 +19,7 @@ was produced by running both and diffing the output, on 2026-08-14.
 | Findings sweep | every corpus-wide aggregate, 17 probes | byte-identical |
 
 **One divergence across the whole system.** It is described at the bottom, and the Python side
-looks like the one that is wrong.
+looks like the one that is incorrect.
 
 ## How it was checked
 
@@ -68,7 +68,7 @@ Finding 2 — rank improved by the content.exact subfield
     cited in findings.md: claude-sonnet-4-6    in the set
 ```
 
-The `0 of 87` is the load-bearing one. It is the figure that disproved the original
+The `0 of 87` is the important one. It is the figure that disproved the original
 "the analyzer splits `rank_constant` on the underscore" claim, and it now falls out of an
 implementation with a different regex engine, a different YAML parser and a different
 Elasticsearch client. A subtle extraction bug in the Python sweep would have shown up here.
@@ -88,7 +88,7 @@ All eight rows reproduce, including the counter-example that constrains the clai
 | `rank_window_size` | token | 6 | 2 | 5 |
 | `rank_window_size` | sentence | 7 | 2 | 3 |
 
-`rank_window_size` is where fusion **loses** to BM25 alone. It reproducing here matters more
+`rank_window_size` is where fusion **loses** to BM25 alone. That it reproduces here matters more
 than the rows where hybrid wins: the narrowed claim — *fusion is never worse than the weaker
 arm, but does not always beat the stronger one* — is now supported by two implementations,
 including the row that limits it.
@@ -114,4 +114,4 @@ turns `stale_after: 2026-09-09` into a `java.util.Date` at UTC midnight, and rea
 negative-offset zone yields `2026-09-08` — every staleness boundary silently a day early, facts
 declared stale before they are. Both bugs are pinned by `BundleTest`.
 
-Tracked as JVM-10. Unresolved on purpose: fixing it means changing a public, pushed repo.
+Tracked as JVM-10 in the internal backlog (not published yet). Unresolved on purpose: fixing it means changing a public, pushed repo.
