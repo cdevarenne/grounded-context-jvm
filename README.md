@@ -11,7 +11,7 @@ on Elasticsearch and reached over MCP.
 
 ## Why this exists
 
-Most enterprise back ends run on the JVM. This repo makes the pattern build-and-runnable on that
+Most enterprise backends run on the JVM. This repo makes the pattern build-and-runnable on that
 stack. A team can clone it, point it at their own Elasticsearch and their own documents, and have
 a grounded context layer running — without rebuilding it from a blog post.
 
