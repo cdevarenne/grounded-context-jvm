@@ -1,6 +1,6 @@
 # Grounded Context Layer for Enterprise Agents — JVM
 
-A Java/Spring port of [**grounded-context**](https://github.com/cdevarenne/grounded-context):
+A Java/Spring port of the [**grounded-context**](https://github.com/cdevarenne/grounded-context) Python version:
 a grounded, composable, **deterministic-where-it-matters** context layer for LLM agents, built
 on Elasticsearch and reached over MCP.
 
@@ -11,7 +11,8 @@ on Elasticsearch and reached over MCP.
 
 ## Why a second implementation
 
-Not to have the same thing in two languages. The Python repo publishes measured claims — rank
+The Java/Spring version makes is available for developers working with that tech stack. 
+Another aspect of having a different runtime is to check measured claims in the Python — rank
 tables, score ranges, corpus-wide counts — and a single codebase cannot tell you whether those
 numbers describe the *index* or merely describe *itself*. A second implementation reading the
 same index, with its own regex engine, YAML parser and Elasticsearch client, can.
