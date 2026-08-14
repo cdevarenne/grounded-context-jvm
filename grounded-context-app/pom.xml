@@ -20,6 +20,7 @@
   <properties>
     <spring-boot.version>4.1.0</spring-boot.version>
     <elasticsearch.version>9.5.1</elasticsearch.version>
+    <picocli.version>4.7.7</picocli.version>
   </properties>
 
   <dependencyManagement>
@@ -50,6 +51,11 @@
       <artifactId>elasticsearch-java</artifactId>
       <version>${elasticsearch.version}</version>
     </dependency>
+    <dependency>
+      <groupId>info.picocli</groupId>
+      <artifactId>picocli-spring-boot-starter</artifactId>
+      <version>${picocli.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -64,6 +70,20 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <version>${spring-boot.version}</version>
+        <configuration>
+          <mainClass>io.github.cdevarenne.gctx.app.GroundedContextApplication</mainClass>
+          <!-- The CLI is the product; `gctx` is what the README tells people to run. -->
+          <finalName>gctx</finalName>
+        </configuration>
+        <executions>
+          <execution>
+            <!-- Not inherited: this project imports spring-boot-dependencies rather than
+                 using spring-boot-starter-parent, so the repackage goal must be bound here. -->
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
