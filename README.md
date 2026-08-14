@@ -4,6 +4,10 @@ A Java/Spring port of the [**grounded-context**](https://github.com/cdevarenne/g
 a grounded, composable, **deterministic-where-it-matters** context layer for LLM agents, built
 on Elasticsearch and reached over MCP.
 
+**Background:** [A Grounded Context Layer for Agents — and Three Things Hybrid Search Won't Tell
+You](https://medium.com/@claude.devarenne/a-grounded-context-layer-for-agents-and-three-things-hybrid-search-wont-tell-you-e71fdc334773)
+— why the pattern is shaped this way. This repo is how to build it.
+
 > ⚠️ **This is a prototype** — a proof of concept, an architecture backed by sample code.
 > Read-only, single user, small curated corpus. Not production software.
 
