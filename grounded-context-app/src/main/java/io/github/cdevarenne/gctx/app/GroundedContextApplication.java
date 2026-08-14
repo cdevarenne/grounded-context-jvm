@@ -28,16 +28,6 @@ public class GroundedContextApplication implements CommandLineRunner {
         this.semantic = semantic;
     }
 
-    /**
-     * The fallback engine. Registered only when no real one is configured, so the exploratory
-     * branch refuses instead of failing when Elasticsearch is absent.
-     */
-    @Bean
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(SemanticSearch.class)
-    static SemanticSearch unavailableSemanticSearch() {
-        return SemanticSearch.UNAVAILABLE;
-    }
-
     @Override
     public void run(String... args) {
         CommandLine commandLine = new CommandLine(new GctxCommand(semantic), factory);
