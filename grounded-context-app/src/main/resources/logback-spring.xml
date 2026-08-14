@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  All logging goes to stderr, never stdout.
+
+  Two reasons, both correctness rather than taste. Over the MCP stdio transport, stdout *is*
+  the JSON-RPC channel: one stray log line corrupts the stream and the client sees a protocol
+  error. And for the CLI, stdout carries the answer, so a log line would break JSON output for
+  any caller that pipes it. Logback's ConsoleAppender defaults to System.out, so this has to be
+  stated explicitly.
+-->
+<configuration>
+  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <encoder>
+      <pattern>%-5level %logger{0} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="WARN">
+    <appender-ref ref="STDERR"/>
+  </root>
+</configuration>

@@ -36,6 +36,7 @@ import picocli.CommandLine.ParentCommand;
             GctxCommand.AskCommand.class,
             GctxCommand.RouteCommand.class,
             GctxCommand.EntitiesCommand.class,
+            GctxCommand.McpCommand.class,
         })
 public class GctxCommand implements Callable<Integer> {
 
@@ -120,6 +121,22 @@ public class GctxCommand implements Callable<Integer> {
             } else {
                 out.println(decision.route() + " — " + decision.rationale());
             }
+            return 0;
+        }
+    }
+
+    @Command(name = "mcp", description = "serve the retrieval tools over MCP on stdio")
+    static class McpCommand implements Callable<Integer> {
+        @ParentCommand GctxCommand parent;
+
+        @Override
+        public Integer call() throws Exception {
+            var server = new io.github.cdevarenne.gctx.app.mcp.GroundedMcpServer(parent.service())
+                    .start();
+            // stdio has no idle timeout: the client owns the lifetime, and the server stays up
+            // until the transport closes or the process is terminated.
+            Thread.currentThread().join();
+            server.close();
             return 0;
         }
     }
