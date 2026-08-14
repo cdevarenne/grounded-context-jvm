@@ -15,12 +15,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * Live cluster tests for the hybrid path.
  *
- * <p>Skipped without credentials so a fresh clone still builds. What they pin is the claim that
- * makes this port worth doing: Java and Python query the same index with the same constants, so
- * the ranks and scores must agree. A divergence here means one implementation is wrong and the
- * published findings are in question — which is a much better failure than noticing in a demo.
+ * <p>Two gates, deliberately. Behavioural claims — a citation carries a URL, a method, no trust
+ * tier — hold on any corpus and only need a reachable index. Claims that quote measured numbers
+ * describe the reference corpus, so they run only when that corpus is present and skip on an
+ * adopter's own index. A team indexing its own documents must not meet a red build.
  */
-@EnabledIf("indexReachable")
 class HybridSemanticSearchTest {
 
     static final String TOKEN = "rank_constant";
@@ -29,6 +28,11 @@ class HybridSemanticSearchTest {
     static final String DEFINING_CHUNK = "chunk:1";
 
     static HybridSemanticSearch search;
+
+    @SuppressWarnings("unused") // referenced by @EnabledIf
+    static boolean referenceCorpus() {
+        return ReferenceCorpus.isPresent();
+    }
 
     @SuppressWarnings("unused") // referenced by @EnabledIf
     static boolean indexReachable() {
@@ -46,6 +50,9 @@ class HybridSemanticSearchTest {
 
     @BeforeAll
     static void connect() {
+        if (!indexReachable()) {
+            return;
+        }
         search = new HybridSemanticSearch(
                 ElasticsearchConfiguration.connect(ElasticsearchSettings.discover().orElseThrow()));
     }
@@ -62,6 +69,7 @@ class HybridSemanticSearchTest {
     }
 
     @Test
+    @EnabledIf("indexReachable")
     void hybrid_returns_grounded_citations() {
         List<Citation> results = search.search("How should I chunk documents for retrieval?", 3);
         assertThat(results).isNotEmpty();
@@ -76,11 +84,13 @@ class HybridSemanticSearchTest {
 
     @ParameterizedTest
     @ValueSource(strings = {TOKEN, SENTENCE})
+    @EnabledIf("referenceCorpus")
     void hybrid_ranks_the_defining_chunk_first_for_both_phrasings(String query) {
         assertThat(rankOfDefiningChunk(search.search(query, 20))).isEqualTo(1);
     }
 
     @Test
+    @EnabledIf("referenceCorpus")
     void the_published_arm_ranks_reproduce_exactly() {
         // docs/findings.md in the Python repo publishes these. Same index, same constants,
         // so the same numbers must come out of this implementation.
@@ -92,6 +102,7 @@ class HybridSemanticSearchTest {
     }
 
     @Test
+    @EnabledIf("referenceCorpus")
     void neither_single_arm_wins_both_phrasings() {
         // The actual finding: which arm degrades depends on how the question is phrased.
         assertThat(rankOfDefiningChunk(search.lexicalOnly(SENTENCE, 20))).isGreaterThan(1);
@@ -99,6 +110,7 @@ class HybridSemanticSearchTest {
     }
 
     @Test
+    @EnabledIf("referenceCorpus")
     void fusion_loses_to_bm25_on_rank_window_size() {
         // The counter-example that narrows the claim from "hybrid wins" to "hybrid is never
         // worse than the weaker arm". If this stops holding, the finding must be widened.
@@ -111,12 +123,14 @@ class HybridSemanticSearchTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"How do I bake sourdough bread?", "What is the capital of France?"})
+    @EnabledIf("referenceCorpus")
     void out_of_domain_questions_return_nothing(String query) {
         // Citing an irrelevant passage is worse than admitting there is no grounded answer.
         assertThat(search.search(query, 5)).isEmpty();
     }
 
     @Test
+    @EnabledIf("referenceCorpus")
     void the_floor_is_what_rejects_them_not_the_absence_of_hits() {
         List<Citation> ungated = search.search("How do I bake sourdough bread?", 5, Double.NaN);
         assertThat(ungated).isNotEmpty();
@@ -124,6 +138,7 @@ class HybridSemanticSearchTest {
     }
 
     @Test
+    @EnabledIf("referenceCorpus")
     void rrf_score_cannot_separate_relevant_from_irrelevant() {
         // Why the floor reads a pre-fusion score: RRF encodes rank, not match quality.
         Citation onTopic = search.search("How do I stream responses from the API?", 1).getFirst();
@@ -132,6 +147,7 @@ class HybridSemanticSearchTest {
     }
 
     @Test
+    @EnabledIf("referenceCorpus")
     void the_pre_fusion_score_is_what_separates_them() {
         assertThat(search.isRelevant("What is reciprocal rank fusion?",
                 HybridSemanticSearch.RELEVANCE_FLOOR)).isTrue();

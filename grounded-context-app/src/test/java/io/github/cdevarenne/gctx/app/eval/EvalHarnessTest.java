@@ -111,6 +111,10 @@ class EvalHarnessTest {
     // --- live cluster ----------------------------------------------------------------
 
     @SuppressWarnings("unused") // referenced by @EnabledIf
+    static boolean referenceCorpus() {
+        return io.github.cdevarenne.gctx.app.es.ReferenceCorpus.isPresent();
+    }
+
     static boolean indexReachable() {
         try {
             return ElasticsearchConfiguration.client()
@@ -133,7 +137,7 @@ class EvalHarnessTest {
     }
 
     @Test
-    @EnabledIf("indexReachable")
+    @EnabledIf("referenceCorpus")
     void the_whole_set_has_no_failures() {
         List<String> failures = harness(liveSearch()).runAll(AS_OF).stream()
                 .filter(r -> EvalResult.FAIL.equals(r.verdict()))
@@ -143,7 +147,7 @@ class EvalHarnessTest {
     }
 
     @Test
-    @EnabledIf("indexReachable")
+    @EnabledIf("referenceCorpus")
     void the_published_compare_table_reproduces() {
         // Every row of the table in the Python repo's docs/findings.md, recomputed here.
         ArmComparison comparison = new ArmComparison(liveSearch());
@@ -167,7 +171,7 @@ class EvalHarnessTest {
     }
 
     @Test
-    @EnabledIf("indexReachable")
+    @EnabledIf("referenceCorpus")
     void fusion_is_never_worse_than_the_weaker_arm() {
         // The claim findings.md actually makes — deliberately not "hybrid wins".
         ArmComparison comparison = new ArmComparison(liveSearch());

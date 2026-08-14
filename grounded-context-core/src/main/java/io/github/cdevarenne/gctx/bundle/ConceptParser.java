@@ -10,19 +10,9 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.LoaderOptions;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /** Parse one Markdown file with YAML front matter into a {@link Concept}. */
 public final class ConceptParser {
-
-    /** {@code ---\n<yaml>\n---\n<body>}, matched against the whole file. */
-    static final Pattern FRONT_MATTER =
-            Pattern.compile("\\A---\\n(.*?)\\n---\\n?(.*)\\z", Pattern.DOTALL);
 
     private ConceptParser() {
     }
@@ -35,12 +25,9 @@ public final class ConceptParser {
             throw new UncheckedIOException(e);
         }
 
-        Matcher match = FRONT_MATTER.matcher(text);
-        if (!match.matches()) {
-            throw new BundleException(path + ": no YAML front matter");
-        }
-
-        Map<String, Object> meta = loadFrontMatter(path, match.group(1));
+        FrontMatter.Parsed parsed = FrontMatter.parse(text)
+                .orElseThrow(() -> new BundleException(path + ": no YAML front matter"));
+        Map<String, Object> meta = parsed.meta();
 
         // `type` is OKF's only always-required key; `id` is our lookup key.
         for (String required : List.of("type", "id")) {
@@ -64,29 +51,7 @@ public final class ConceptParser {
                 staleAfter(path, meta.get("stale_after")),
                 strings(meta.get("links")),
                 strings(meta.get("aliases")),
-                match.group(2).strip());
-    }
-
-    private static Map<String, Object> loadFrontMatter(Path path, String yaml) {
-        // Safe construction only: a knowledge bundle is data, and must never be able to
-        // instantiate arbitrary types on load. The resolver keeps timestamps as written —
-        // see LiteralTimestampResolver for the two bugs that earns.
-        Yaml parser = new Yaml(
-                new SafeConstructor(new LoaderOptions()),
-                new org.yaml.snakeyaml.representer.Representer(new DumperOptions()),
-                new DumperOptions(),
-                new LoaderOptions(),
-                new LiteralTimestampResolver());
-        Object loaded = parser.load(yaml);
-        if (loaded == null) {
-            return Map.of();
-        }
-        if (!(loaded instanceof Map<?, ?> map)) {
-            throw new BundleException(path + ": front matter is not a mapping");
-        }
-        Map<String, Object> meta = new java.util.LinkedHashMap<>();
-        map.forEach((key, value) -> meta.put(String.valueOf(key), value));
-        return meta;
+                parsed.body().strip());
     }
 
     /**

@@ -42,6 +42,7 @@ import picocli.CommandLine.ParentCommand;
             GctxCommand.McpCommand.class,
             GctxCommand.EvalCommand.class,
             GctxCommand.MeasureCommand.class,
+            GctxCommand.IndexCommand.class,
         })
 public class GctxCommand implements Callable<Integer> {
 
@@ -276,6 +277,63 @@ public class GctxCommand implements Callable<Integer> {
                 out.printf("  %-13s %7.4f %7.2f  %s%n",
                         probe.kind(), probe.fused(), probe.sparse(), probe.query());
             }
+            return 0;
+        }
+    }
+
+    @Command(name = "index",
+            description = "build the semantic index from a directory of corpus pages")
+    static class IndexCommand implements Callable<Integer> {
+        @ParentCommand GctxCommand parent;
+
+        @Option(names = "--corpus", paramLabel = "DIR", required = true,
+                description = "directory of front-matter Markdown pages")
+        String corpus;
+
+        @Option(names = "--index", paramLabel = "NAME",
+                description = "index to build; defaults to the reference index")
+        String index;
+
+        @Option(names = "--recreate", description = "delete and rebuild the index first")
+        boolean recreate;
+
+        @Override
+        public Integer call() throws Exception {
+            var client = io.github.cdevarenne.gctx.app.es.ElasticsearchConfiguration.client();
+            if (client.isEmpty()) {
+                System.err.println("error: this needs Elasticsearch; set ES_URL and ES_API_KEY");
+                return EXIT_ERROR;
+            }
+            java.nio.file.Path dir = java.nio.file.Path.of(corpus);
+            if (!java.nio.file.Files.isDirectory(dir)) {
+                System.err.println("error: no such corpus directory: " + dir);
+                return EXIT_ERROR;
+            }
+
+            var indexer = new io.github.cdevarenne.gctx.app.es.CorpusIndexer(client.get());
+            String target = index != null ? index
+                    : io.github.cdevarenne.gctx.app.es.ElasticsearchSettings.INDEX;
+            PrintWriter out = new PrintWriter(System.out, true);
+
+            var documents = io.github.cdevarenne.gctx.app.es.CorpusIndexer.documents(dir);
+            if (documents.isEmpty()) {
+                System.err.println("error: no corpus pages in " + dir);
+                return EXIT_ERROR;
+            }
+
+            if (recreate && indexer.exists(target)) {
+                indexer.delete(target);
+                out.println("deleted index " + target);
+            }
+            if (!indexer.exists(target)) {
+                indexer.createIndex(target);
+                out.println("created index " + target + " (semantic_text via "
+                        + io.github.cdevarenne.gctx.app.es.ElasticsearchSettings.INFERENCE_ID + ")");
+            }
+
+            long held = indexer.index(target, documents);
+            out.println("indexed " + documents.size() + " chunks, 0 errors");
+            out.println(target + " now holds " + held + " documents");
             return 0;
         }
     }

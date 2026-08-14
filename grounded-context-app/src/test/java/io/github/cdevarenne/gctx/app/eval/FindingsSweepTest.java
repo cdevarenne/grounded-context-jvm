@@ -84,6 +84,10 @@ class FindingsSweepTest {
     // --- live cluster: the published aggregates --------------------------------------
 
     @SuppressWarnings("unused") // referenced by @EnabledIf
+    static boolean referenceCorpus() {
+        return io.github.cdevarenne.gctx.app.es.ReferenceCorpus.isPresent();
+    }
+
     static boolean indexReachable() {
         try {
             return ElasticsearchConfiguration.client()
@@ -121,7 +125,7 @@ class FindingsSweepTest {
     }
 
     @Test
-    @EnabledIf("indexReachable")
+    @EnabledIf("referenceCorpus")
     void the_published_subfield_figures_reproduce() {
         // findings.md publishes 44 of 149 and 0 of 87; the zero is the load-bearing half,
         // because it disproves "the subfield rescues split underscore tokens".
@@ -135,7 +139,7 @@ class FindingsSweepTest {
     }
 
     @Test
-    @EnabledIf("indexReachable")
+    @EnabledIf("referenceCorpus")
     void the_mechanism_numbers_quoted_in_findings_md_reproduce() {
         Map<String, Object> mechanism = sweep.mechanismCounts();
         assertThat(mechanism.get("content_matches")).isEqualTo(6L);
@@ -145,7 +149,7 @@ class FindingsSweepTest {
     }
 
     @Test
-    @EnabledIf("indexReachable")
+    @EnabledIf("referenceCorpus")
     void the_invisible_to_exact_figure_reproduces() {
         assertThat(hidden.get("total")).isEqualTo(568);
         assertThat(hidden.get("invisible")).isEqualTo(137);
@@ -158,7 +162,7 @@ class FindingsSweepTest {
     }
 
     @Test
-    @EnabledIf("indexReachable")
+    @EnabledIf("referenceCorpus")
     void the_fused_score_ranks_an_off_topic_question_above_a_genuine_one() {
         // Finding 3 in its strongest form. If this stops holding, the claim is overstated.
         double worstOffTopic = probes.stream().filter(p -> "off-topic".equals(p.kind()))
@@ -169,7 +173,7 @@ class FindingsSweepTest {
     }
 
     @Test
-    @EnabledIf("indexReachable")
+    @EnabledIf("referenceCorpus")
     void the_pre_fusion_score_is_what_actually_separates() {
         double weakestGenuine = probes.stream().filter(p -> "in-domain".equals(p.kind()))
                 .mapToDouble(FindingsSweep.Probe::sparse).min().orElseThrow();
