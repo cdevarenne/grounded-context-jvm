@@ -48,6 +48,17 @@ public class ElasticsearchConfiguration {
     static ElasticsearchClient connect(ElasticsearchSettings settings) {
         return ElasticsearchClient.of(b -> b
                 .host(settings.url())
-                .apiKey(settings.apiKey()));
+                .apiKey(settings.apiKey())
+                // A cloud endpoint occasionally refuses a connection under load, and the client's
+                // default connect timeout is one second. Without retries a transient blip fails
+                // the whole build, which for an adopter is indistinguishable from a broken port.
+                .retryConfig(r -> r
+                        .backoffPolicy(co.elastic.clients.transport.BackoffPolicy
+                                .exponentialBackoff(500L, 4))
+                        .retryableExceptions(
+                                java.net.SocketTimeoutException.class,
+                                java.net.ConnectException.class,
+                                org.apache.hc.client5.http.ConnectTimeoutException.class)
+                        .retryableStatuses(429, 502, 503, 504)));
     }
 }

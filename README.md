@@ -9,21 +9,24 @@ on Elasticsearch and reached over MCP.
 
 ---
 
-## Why a second implementation
+## Why this exists
 
-The Java/Spring version makes this POC available for developers working with that tech stack. 
-Another aspect of having a different runtime is to check measured claims in the Python version — rank
-tables, score ranges, corpus-wide counts — and a single codebase cannot tell you whether those
-numbers describe the *index* or merely describe *itself*. A second implementation reading the
-same index, with its own regex engine, YAML parser and Elasticsearch client, can.
+Most enterprise back ends run on the JVM. This repo makes the pattern build-and-runnable on that
+stack. A team can clone it, point it at their own Elasticsearch and their own documents, and have
+a grounded context layer running — without rebuilding it from a blog post.
 
-Every published figure was recomputed here. The results are in
-[**docs/parity.md**](docs/parity.md), which is the point of this repo: **one divergence across
-the entire system**, and it is a case where the Python side looks wrong.
+It is a complete implementation, not one half of one. It does not fetch documents. It does
+everything else: parse the knowledge bundle, answer exact lookups, **build the semantic index**,
+run hybrid retrieval, serve the tools over MCP, and evaluate the result.
 
-It also extends the model-agnostic claim. The Python repo showed one MCP server driven by Claude
-and by Gemini; this shows the same tool contract served by two independent implementations —
-model-agnostic *and* language-agnostic.
+Start at [Run it](#run-it). To use your own documents, see
+[Bring your own corpus](#bring-your-own-corpus).
+
+**It also reproduces the reference implementation faithfully.** That is what makes it safe to
+adopt: a team that indexes with this code gets the behaviour the
+[Python repo](https://github.com/cdevarenne/grounded-context) documents. Every published figure
+was recomputed here, and the comparison found one defect in the reference, now fixed. The
+evidence — and the exact limits of what it shows — is in [**docs/parity.md**](docs/parity.md).
 
 ---
 
@@ -92,9 +95,33 @@ Without credentials the exploratory branch returns `Not found in the grounded so
 than failing. An unavailable engine is a refusal, never an error, and never a fallback to the
 model's own memory.
 
-The corpus itself is **not** built here. It is fetched and indexed by the Python repo's
-`scripts/fetch_corpus.py` and `scripts/index_corpus.py`; this implementation reads the index
-those produce, which is precisely what makes the comparison meaningful.
+### Bring your own corpus
+
+This is the adopter path, and it needs no Python.
+
+```bash
+# 1. Put your documents in a directory as Markdown with YAML front matter:
+#      id, title, url, provider, topic, fetched_at
+# 2. Choose an index name, then build it.
+export ES_INDEX=my-team-corpus
+java -jar grounded-context-app/target/gctx.jar index --corpus ./my-docs --recreate
+
+# 3. Everything else now runs against your index.
+java -jar grounded-context-app/target/gctx.jar ask "how do we rotate credentials?"
+```
+
+`ES_INDEX` selects the index for every command; it defaults to the reference corpus. The indexer
+creates the mapping the retrieval path depends on — the `exact_token` analyzer, the `content.exact`
+subfield, and `semantic_text` wired to ELSER — so the index is built the same way whoever builds it.
+
+**What does not port:** fetching. The Python repo's `scripts/fetch_corpus.py` collects the
+reference corpus from public documentation. Deliberately not reimplemented — an adopting team
+already has its documents, and a fetcher tuned to someone else's sources is not useful to them.
+
+Two consequences worth knowing. The reference corpus is not committed to either repo, so
+reproducing the published numbers requires running that Python script once. And the tests that
+pin those numbers **skip** on any other index, so building your own corpus does not turn the
+suite red.
 
 ### From an agent, over MCP
 

@@ -1,11 +1,25 @@
 # Parity with the Python implementation
 
-This repo provides a cross-check of the numbers the Python repo publishes. A single codebase cannot
-distinguish "this is true of the index" from "this is true of my code"; two can.
+This is the evidence that the port reproduces the reference implementation. A team adopting it
+gets the same system, not a similar one.
 
-Both implementations read the **same Elasticsearch index** (`grounded-context-corpus`, 320
-chunks, ELSER via `.elser-2-elasticsearch`) and the **same knowledge bundle**. Everything below
-was produced by running both and diffing the output, on 2026-08-14.
+It is also a cross-check on the reference. Building the same behaviour twice, from the same
+specification, in two languages surfaces defects that neither codebase can show on its own —
+and it found one.
+
+**What this can and cannot show.** Elasticsearch computes BM25, ELSER and the RRF fusion. Both
+implementations are clients that send a query and render what comes back, so agreeing on a score
+is expected and proves nothing about the score. What the comparison does rule out is an artifact
+in the client code — YAML parsing, query construction, provenance rendering, and the sweep's
+identifier enumeration — which is exactly where the defect below was found.
+
+One part is genuinely independent: **the index build**. Each implementation computes chunk
+boundaries itself, from the same source pages. See
+[the independently built index](#the-independently-built-index).
+
+Unless stated otherwise, figures below were produced on 2026-08-14 by running both
+implementations against the reference index (`grounded-context-corpus`, 320 chunks, ELSER via
+`.elser-2-elasticsearch`) and the same knowledge bundle, and diffing the output.
 
 ## Result
 
@@ -69,9 +83,12 @@ Finding 2 — rank improved by the content.exact subfield
 ```
 
 The `0 of 87` is the important one. It is the figure that disproved the original
-"the analyzer splits `rank_constant` on the underscore" claim, and it now falls out of an
-implementation with a different regex engine, a different YAML parser and a different
-Elasticsearch client. A subtle extraction bug in the Python sweep would have shown up here.
+"the analyzer splits `rank_constant` on the underscore" claim, and it is re-derived here rather
+than read back: each implementation enumerates the corpus tokens itself and counts what the
+subfield changes. An enumeration bug on one side would show up as a different denominator.
+
+The regex patterns were copied to match, so agreement on them is weak evidence on its own. The
+enumeration, chunking and counting around them are separate code.
 
 ## The arm comparison, recomputed
 
@@ -92,6 +109,39 @@ All eight rows reproduce, including the counter-example that constrains the clai
 than the rows where hybrid wins: the narrowed claim — *fusion is never worse than the weaker
 arm, but does not always beat the stronger one* — is now supported by two implementations,
 including the row that limits it.
+
+## The independently built index
+
+Everything above compares two clients reading one index, so it says nothing about how that index
+was built. This section does.
+
+`gctx index` builds the index from the corpus pages: it chunks them, creates the mapping, and
+bulk-loads. Chunk boundaries are computed by each implementation from the same source text, not
+read back from Elasticsearch. Two checks follow from that.
+
+**The chunks agree.** All 320 chunks the Java indexer computes are byte-identical to the ones in
+the reference index, document ids included. `CorpusIndexerTest` pins this.
+
+**The numbers survive a separate index.** A second index was built from the same corpus using
+only the Java indexer, and the whole suite was run against it:
+
+```console
+$ ES_INDEX=grounded-context-corpus-jvm \
+    java -jar grounded-context-app/target/gctx.jar index --corpus ../grounded-context/corpus/raw --recreate
+created index grounded-context-corpus-jvm (semantic_text via .elser-2-elasticsearch)
+indexed 320 chunks, 0 errors
+
+$ ES_INDEX=grounded-context-corpus-jvm mvn test
+Tests run: 105, Failures: 0, Errors: 0, Skipped: 0
+```
+
+Every pinned literal held: 44 of 149, 0 of 87, 137 of 568, the 6/1 match counts, rank 3 → 1, all
+eight rows of the arm comparison, all seventeen probe scores, and the eval verdicts. A full
+`measure` run against the two indices differs only in the index name it prints.
+
+This is narrow but real. It shows the published aggregates are a property of the corpus and the
+retrieval configuration, not of one particular index build. It still does not audit
+Elasticsearch's scoring — the same engine scored both.
 
 ## What the cross-check found
 

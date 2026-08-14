@@ -18,13 +18,33 @@ import java.util.Optional;
  */
 public final class ElasticsearchSettings {
 
-    public static final String INDEX = "grounded-context-corpus";
+    /** The corpus this project curates. An adopter points {@code ES_INDEX} at their own. */
+    public static final String DEFAULT_INDEX = "grounded-context-corpus";
+
+    /**
+     * The index every command reads and writes.
+     *
+     * <p>Configurable because a team adopting this will have its own corpus, and hard-coding the
+     * name would force them to edit the source. Resolved once at startup from {@code ES_INDEX},
+     * falling back to the reference corpus.
+     */
+    public static final String INDEX = resolveIndex();
 
     /** Preconfigured ELSER endpoint on Elastic Cloud Serverless. */
     public static final String INFERENCE_ID = ".elser-2-elasticsearch";
 
     public static final String URL_VAR = "ES_URL";
     public static final String API_KEY_VAR = "ES_API_KEY";
+    public static final String INDEX_VAR = "ES_INDEX";
+
+    private static String resolveIndex() {
+        String fromEnv = System.getenv(INDEX_VAR);
+        if (fromEnv != null && !fromEnv.isBlank()) {
+            return fromEnv.strip();
+        }
+        String fromFile = fromEnvFile().getOrDefault(INDEX_VAR, "").strip();
+        return fromFile.isEmpty() ? DEFAULT_INDEX : fromFile;
+    }
 
     static final String ENV_FILE = ".env";
     private static final int MAX_PARENTS = 5;
