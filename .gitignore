@@ -1,0 +1,8 @@
+target/
+*.class
+.DS_Store
+.env
+corpus/raw/
+backlog.csv
+.idea/
+*.iml
