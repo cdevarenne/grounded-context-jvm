@@ -13,13 +13,13 @@ was produced by running both and diffing the output, on 2026-08-14.
 |---|---|---|
 | CLI | 7 commands, stdout + exit codes | byte-identical |
 | Semantic path | 4 queries incl. an out-of-domain refusal | byte-identical |
-| MCP | instructions, tool schemas, 6 tool calls | identical except `verified_at` |
+| MCP | instructions, tool schemas, 6 tool calls | byte-identical |
 | Eval set | all 12 questions, verdicts and routes | byte-identical |
 | Compare table | all 8 rows of the arm comparison | byte-identical |
 | Findings sweep | every corpus-wide aggregate, 17 probes | byte-identical |
 
-**One divergence across the whole system.** It is described at the bottom, and the Python side
-looks like the one that is incorrect.
+**No divergences.** The cross-check found one, in `verified_at`. The Python implementation was
+corrected. The two now agree on every field. The section at the bottom records what it was.
 
 ## How it was checked
 
@@ -93,25 +93,26 @@ than the rows where hybrid wins: the narrowed claim — *fusion is never worse t
 arm, but does not always beat the stronger one* — is now supported by two implementations,
 including the row that limits it.
 
-## The one divergence
+## What the cross-check found
 
-| | `verified_at` |
+The two implementations disagreed on one field:
+
+| | `verified_at`, before the fix |
 |---|---|
 | JVM | `2026-08-10T19:06:23-07:00` |
 | Python | `2026-08-10 19:06:23-07:00` |
 
-Everything else on the MCP surface matches: the instruction text, the tool names, the required
-arguments, the other twelve citation fields, and the rendered block (both truncate to
-`2026-08-10`).
+The bundle file contains the `T` form. PyYAML resolved that scalar to a `datetime`. Python's
+`str()` then rendered it with a space. The result was not valid ISO-8601, and it was not what the
+file says. Provenance must quote its source. It must not reinterpret it.
 
-The bundle file literally contains the `T` form. PyYAML parses that scalar into a `datetime`, and
-`str()` renders it with a space — so **Python reformats a timestamp it should be quoting**, and
-the result is not valid ISO-8601. Provenance should reproduce its source, not reinterpret it.
+Both implementations now keep timestamp-shaped scalars as text. Python uses a loader without the
+timestamp resolver. This repo uses `LiteralTimestampResolver`. A second run of the same six MCP
+calls shows no differences.
 
-This implementation avoids it with a YAML resolver that leaves timestamp-shaped scalars as text.
-That was not a stylistic choice: the default behaviour produced a **date off by one**. SnakeYAML
-turns `stale_after: 2026-09-09` into a `java.util.Date` at UTC midnight, and reading it back in a
-negative-offset zone yields `2026-09-08` — every staleness boundary silently a day early, facts
-declared stale before they are. Both bugs are pinned by `BundleTest`.
+The same conversion is more dangerous on the JVM. SnakeYAML makes `stale_after: 2026-09-09` a
+`java.util.Date` at UTC midnight. In a negative-offset zone, that date reads back as 2026-09-08.
+Every staleness boundary would move one day earlier. Facts would be stale before their date. The
+ported tests found this on the first run. `BundleTest` pins both behaviours.
 
-Tracked as JVM-10 in the internal backlog (not published yet). Unresolved on purpose: fixing it means changing a public, pushed repo.
+Neither implementation could show the `verified_at` defect alone. Each one was self-consistent.
