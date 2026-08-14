@@ -1,6 +1,6 @@
 # Parity with the Python implementation
 
-This repo provdes a cross-check of the numbers the Python repo publishes. A single codebase cannot
+This repo provides a cross-check of the numbers the Python repo publishes. A single codebase cannot
 distinguish "this is true of the index" from "this is true of my code"; two can.
 
 Both implementations read the **same Elasticsearch index** (`grounded-context-corpus`, 320
