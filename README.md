@@ -149,17 +149,22 @@ All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 | Findings sweep (`measure`) | ✅ reproduces every published aggregate |
 | Corpus indexer (`index`) | ✅ chunking byte-identical to the reference index |
 | Bundle drift check against the Python repo | ✅ fails on divergence, skips when absent |
-| Test suite | ✅ 105 tests; cluster tests skip without credentials |
+| Test suite | ✅ 107 tests; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ planned, via the `SemanticSearch` seam |
 
 ---
 
 ## Learn more
 
-- [**docs/parity.md**](docs/parity.md) — what was compared, how, and the one thing that differs.
-- The **[Python repo](https://github.com/cdevarenne/grounded-context)** holds the design
-  rationale, the specs, and the findings. They are deliberately **not** duplicated here: two
-  copies of an argument drift exactly the way two copies of a bundle do.
+- [**docs/parity.md**](docs/parity.md) — what was compared, how, and what the comparison found.
+- [**docs/index-spec.md**](docs/index-spec.md) — the chunking rule and index mapping this builds
+  to. Read it before changing the indexer: an index built differently returns different ranks.
+- The **[Python repo](https://github.com/cdevarenne/grounded-context)** is the reference
+  implementation. **Which to use:** it holds the corpus tooling — the fetch script — plus the
+  design rationale, the specs, and the findings. This repo is the build-ready port for JVM teams:
+  it indexes and serves, and you point it at your own Elasticsearch and your own documents. The
+  rationale and findings are deliberately **not** duplicated here: two copies of an argument
+  drift exactly the way two copies of a bundle do.
 
 The knowledge bundle *is* duplicated, because this repo has to run standalone — so
 `BundleParityTest` fails if the copies diverge. It runs when the Python repo is checked out
