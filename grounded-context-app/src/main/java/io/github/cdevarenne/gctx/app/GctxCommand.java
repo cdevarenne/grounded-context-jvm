@@ -12,6 +12,9 @@ import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -37,6 +40,7 @@ import picocli.CommandLine.ParentCommand;
             GctxCommand.RouteCommand.class,
             GctxCommand.EntitiesCommand.class,
             GctxCommand.McpCommand.class,
+            GctxCommand.EvalCommand.class,
         })
 public class GctxCommand implements Callable<Integer> {
 
@@ -122,6 +126,80 @@ public class GctxCommand implements Callable<Integer> {
                 out.println(decision.route() + " — " + decision.rationale());
             }
             return 0;
+        }
+    }
+
+    @Command(name = "eval", description = "run the eval set from docs/specs/eval.md")
+    static class EvalCommand implements Callable<Integer> {
+        @ParentCommand GctxCommand parent;
+
+        @Option(names = "--compare", paramLabel = "QUERY",
+                description = "instead: rank one query under ELSER, BM25, and hybrid")
+        String compare;
+
+        @Override
+        public Integer call() {
+            PrintWriter out = new PrintWriter(System.out, true);
+            return compare != null ? compareArms(out) : runSet(out);
+        }
+
+        private int compareArms(PrintWriter out) {
+            if (!(parent.semantic instanceof io.github.cdevarenne.gctx.app.es.HybridSemanticSearch hybrid)) {
+                System.err.println("error: --compare needs Elasticsearch; set ES_URL and ES_API_KEY");
+                return EXIT_ERROR;
+            }
+            var comparison = new io.github.cdevarenne.gctx.app.eval.ArmComparison(hybrid);
+            var target = io.github.cdevarenne.gctx.app.eval.ArmComparison.targetFor(compare);
+            Map<String, Integer> ranks = comparison.compare(compare, target);
+
+            if (parent.json) {
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("query", compare);
+                payload.put("target", target.sourceId() + ":chunk:" + target.chunkIndex());
+                payload.put("ranks", ranks);
+                out.println(JsonWriter.write(payload));
+                return 0;
+            }
+            out.println("query: '" + compare + "'");
+            out.println("target: " + target.sourceId() + " chunk:" + target.chunkIndex()
+                    + " — the chunk that defines the term");
+            out.println();
+            ranks.forEach((arm, rank) -> out.printf("  %-8s %s%n", arm,
+                    rank == null ? "not in top 20" : "rank " + rank));
+            return 0;
+        }
+
+        private int runSet(PrintWriter out) {
+            var harness = new io.github.cdevarenne.gctx.app.eval.EvalHarness(parent.service());
+            List<io.github.cdevarenne.gctx.app.eval.EvalResult> results =
+                    harness.runAll(parent.asOfDate());
+
+            if (parent.json) {
+                out.println(JsonWriter.write(results.stream()
+                        .map(io.github.cdevarenne.gctx.app.eval.EvalResult::asMap).toList()));
+            } else {
+                out.printf("%-5s%-15s%-15s%-14s%-7s%s%n",
+                        "id", "expected", "actual", "route", "cites", "verdict");
+                for (var r : results) {
+                    out.printf("%-5s%-15s%-15s%-14s%-7d%s%n", r.testCase().id(),
+                            r.testCase().expected(), r.actual(), r.route(), r.citations(),
+                            r.verdict());
+                }
+                for (var r : results) {
+                    if (r.testCase().hasKnownDeviation()) {
+                        out.println();
+                        out.println(r.testCase().id() + " KNOWN — "
+                                + r.testCase().knownDeviation());
+                    }
+                }
+                long passed = results.stream().filter(r -> "PASS".equals(r.verdict())).count();
+                long known = results.stream().filter(r -> "KNOWN".equals(r.verdict())).count();
+                long failed = results.stream().filter(r -> "FAIL".equals(r.verdict())).count();
+                out.println();
+                out.println(passed + " pass · " + known + " known deviation · " + failed + " fail");
+            }
+            // A failure exits non-zero so this can gate a build; a declared deviation does not.
+            return results.stream().anyMatch(r -> "FAIL".equals(r.verdict())) ? EXIT_REFUSAL : 0;
         }
     }
 

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "grounded-context": {
+      "command": "java",
+      "args": ["-jar", "grounded-context-app/target/gctx.jar", "mcp"]
+    }
+  }
+}

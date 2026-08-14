@@ -35,6 +35,16 @@ public class ElasticsearchConfiguration {
         return new HybridSemanticSearch(connect(settings.get()));
     }
 
+    /**
+     * A connected client when credentials are discoverable, empty otherwise.
+     *
+     * <p>The public entry point, so callers never handle {@link ElasticsearchSettings} — and so
+     * the API key stays reachable only from inside this package.
+     */
+    public static Optional<ElasticsearchClient> client() {
+        return ElasticsearchSettings.discover().map(ElasticsearchConfiguration::connect);
+    }
+
     static ElasticsearchClient connect(ElasticsearchSettings settings) {
         return ElasticsearchClient.of(b -> b
                 .host(settings.url())
