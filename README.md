@@ -42,7 +42,7 @@ grounded-context-app    Spring Boot: CLI, Elasticsearch, MCP, eval, sweep
 ```
 
 The Python project promises that the deterministic path runs with zero cloud dependency. Here
-that promise is a build constraint you can verify in one command:
+that promise is a build constraint you can verify in one command, in either build tool:
 
 ```console
 $ mvn -pl grounded-context-core dependency:tree
@@ -50,6 +50,10 @@ io.github.cdevarenne:grounded-context-core
 +- org.yaml:snakeyaml:jar:2.5:compile      <- the only compile dependency
 +- org.junit.jupiter:junit-jupiter:jar:5.14.0:test
 \- org.assertj:assertj-core:jar:3.27.6:test
+
+$ ./gradlew :grounded-context-core:dependencies --configuration compileClasspath
+compileClasspath - Compile classpath for source set 'main'.
+\--- org.yaml:snakeyaml:2.5
 ```
 
 Bundle parsing, exact lookup, link traversal, the router, the provenance contract and the answer
@@ -63,13 +67,18 @@ probabilistic half plugs into, and the reason the deterministic path stays frame
 
 ## Run it
 
-Requires **Java 21+** and Maven. The repo develops against a newer JDK, but `maven.compiler.release`
-is 21 so an older LTS can still build it — the same pin-versus-floor split the Python repo uses
-for its interpreter.
+Requires **Java 21+** and either Maven or Gradle. Both build the same two modules from the same
+dependency versions, so pick the one your team already uses. The repo develops against a newer
+JDK, but both set the compiler release to 21 so an older LTS can still build it — the same
+pin-versus-floor split the Python repo uses for its interpreter.
 
 ```bash
-mvn package                                    # builds grounded-context-app/target/gctx.jar
+mvn package        # builds grounded-context-app/target/gctx.jar
+./gradlew build    # builds grounded-context-app/build/libs/gctx.jar
 ```
+
+Each tool writes where its own users expect it to. **The examples below use the Maven path; with
+Gradle, substitute `build/libs/` for `target/`.**
 
 ### Deterministic path — no cloud account, no API key
 
@@ -137,6 +146,10 @@ java -jar grounded-context-app/target/gctx.jar mcp     # serves on stdio; a clie
 runs `uv run --extra mcp gctx-mcp`. Build the jar first. Three tools: `lookup_canonical_fact`,
 `ask_grounded`, `list_entities`.
 
+It names the Maven output, because JSON carries no comment that could offer an alternative. A
+Gradle build puts the jar somewhere else, so change that one path to
+`grounded-context-app/build/libs/gctx.jar`.
+
 All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 
 ---
@@ -153,7 +166,8 @@ All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 | Findings sweep (`measure`) | ✅ reproduces every published aggregate |
 | Corpus indexer (`index`) | ✅ chunking byte-identical to the reference index |
 | Bundle drift check against the Python repo | ✅ fails on divergence, skips when absent |
-| Test suite | ✅ 107 tests; cluster tests skip without credentials |
+| Maven and Gradle builds | ✅ both build all of it; versions drift-tested against each other |
+| Test suite | ✅ 109 tests; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ planned, via the `SemanticSearch` seam |
 
 ---

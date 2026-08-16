@@ -1,4 +1,6 @@
 target/
+build/
+.gradle/
 *.class
 .DS_Store
 .env

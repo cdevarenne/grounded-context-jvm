@@ -1,0 +1,37 @@
+# The Gradle counterpart of the two <properties> blocks in the Maven build: every version is
+# declared once here, and no build file names one.
+#
+# The aliases below deliberately match the Maven property names with `.version` removed, so
+# BuildParityTest can compare the two builds as sets rather than through a mapping table that
+# would be a third thing to keep in step.
+
+[versions]
+snakeyaml = "2.5"
+junit = "5.14.0"
+assertj = "3.27.6"
+spring-boot = "4.1.0"
+elasticsearch = "9.5.1"
+picocli = "4.7.7"
+mcp = "2.0.0"
+
+[libraries]
+snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+
+# Imported as a platform in the app module, exactly as the pom imports the BOM. The Spring Boot
+# Gradle plugin does not apply it on its own, the same way spring-boot-maven-plugin does not.
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+
+elasticsearch-java = { module = "co.elastic.clients:elasticsearch-java", version.ref = "elasticsearch" }
+picocli-spring-boot-starter = { module = "info.picocli:picocli-spring-boot-starter", version.ref = "picocli" }
+mcp-core = { module = "io.modelcontextprotocol.sdk:mcp-core", version.ref = "mcp" }
+mcp-json-jackson2 = { module = "io.modelcontextprotocol.sdk:mcp-json-jackson2", version.ref = "mcp" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

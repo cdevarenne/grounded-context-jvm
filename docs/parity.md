@@ -123,7 +123,7 @@ read back from Elasticsearch. Two checks follow from that.
 the reference index, document ids included. `CorpusIndexerTest` pins this.
 
 **The numbers survive a separate index.** A second index was built from the same corpus using
-only the Java indexer, and the whole suite was run against it:
+only the Java indexer, and the whole suite was run against it on 2026-08-14; the test suite has grown since:
 
 ```console
 $ ES_INDEX=grounded-context-corpus-jvm \
