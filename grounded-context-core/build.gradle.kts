@@ -12,7 +12,7 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj)
-    // TestCountRecorder is a launcher listener, and the launcher is not on the test classpath
-    // by default.
-    testImplementation(libs.junit.platform.launcher)
+    // Gradle 9 does not put the JUnit Platform launcher on the test runtime classpath itself and
+    // fails to start the executor without it. Surefire ships its own, so the pom declares nothing.
+    testRuntimeOnly(libs.junit.platform.launcher)
 }

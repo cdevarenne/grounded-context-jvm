@@ -156,6 +156,19 @@ Gradle build puts the jar somewhere else, so change that one path to
 
 All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 
+### Tests
+
+```bash
+mvn verify         # JUnit XML + text summaries in grounded-context-*/target/surefire-reports/
+./gradlew build    # the same, plus HTML at grounded-context-*/build/reports/tests/test/index.html
+```
+
+Cluster tests skip without Elasticsearch credentials, and the tests pinning reference-corpus
+numbers skip on any other index — so a green run on a partial setup is the expected outcome, not
+a sign of a broken checkout. The reports say which tests ran and which were skipped. This README
+states no total, because a total that changes with your credentials and your corpus is a fact
+about your environment rather than about the repo.
+
 ---
 
 ## Status
@@ -171,7 +184,7 @@ All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 | Corpus indexer (`index`) | ✅ chunking byte-identical to the reference index |
 | Bundle drift check against the Python repo | ✅ fails on divergence, skips when absent |
 | Maven and Gradle builds | ✅ both build all of it; versions drift-tested against each other |
-| Test suite | ✅ 114 tests; cluster tests skip without credentials |
+| Test suite | ✅ JUnit XML from both builds, HTML from Gradle; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ [#3](https://github.com/cdevarenne/grounded-context-jvm/issues/3), via the `SemanticSearch` seam |
 
 **What's next.** Open work is tracked as [GitHub issues](https://github.com/cdevarenne/grounded-context-jvm/issues):

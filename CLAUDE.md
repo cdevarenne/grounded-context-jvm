@@ -32,8 +32,10 @@ ranks, which silently invalidates every published number.
 the eight arm-comparison rows. `ReferenceCorpus` gates those tests so they skip on an adopter's
 index. Never edit a literal to make one pass: a failure means the index changed.
 
-**The README test count is drift-tested.** Add a test and `ReadmeCountCheck` fails at `mvn verify`
-or `./gradlew build` until the README states the new number.
+**The README states no test count.** A total depends on which credentials and which corpus are
+present, so it describes an environment rather than this repo. Both builds emit JUnit XML and
+Gradle emits HTML; that is the report. Drift-guard the published numbers that *are* repo facts —
+the bundle, `docs/index-spec.md`, the eval output — not the size of the suite.
 
 **Refusal is a result, not a failure.** Exit 1 is a grounded refusal; exit 2 is a real error. An
 unreachable Elasticsearch returns `Not found in the grounded sources.` Never fall back to the

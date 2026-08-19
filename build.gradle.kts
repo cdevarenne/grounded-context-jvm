@@ -26,15 +26,11 @@ subprojects {
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
         testLogging {
-            // Gradle otherwise prints a link to an HTML report. The drift guards in this repo
+            // Gradle otherwise only links to the HTML report. The drift guards in this repo
             // exist to say what diverged, so the message has to reach the terminal the way
-            // Surefire's does.
+            // Surefire's does. The HTML report is still written; see the README.
             events("failed")
             exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         }
-        // TestCountRecorder writes target/test-count.txt relative to the test JVM's working
-        // directory, and ReadmeCountCheck reads <module>/target/test-count.txt. That coupling
-        // is invisible in the Java source, so it is named here rather than left to the default.
-        workingDir = projectDir
     }
 }

@@ -81,28 +81,6 @@
   <build>
     <plugins>
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.5.0</version>
-        <executions>
-          <execution>
-            <id>check-readme-test-count</id>
-            <phase>verify</phase>
-            <goals><goal>java</goal></goals>
-            <configuration>
-              <mainClass>io.github.cdevarenne.gctx.app.ReadmeCountCheck</mainClass>
-              <classpathScope>test</classpathScope>
-              <!-- exec:java runs inside Maven's own JVM, so the process sits at the reactor
-                   root and workingDirectory is ignored. Pass the module dir instead. -->
-              <arguments>
-                <argument>${project.basedir}</argument>
-              </arguments>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <version>${spring-boot.version}</version>
