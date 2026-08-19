@@ -31,6 +31,8 @@ implementations against the reference index (`grounded-context-corpus`, 320 chun
 | Eval set | all 12 questions, verdicts and routes | byte-identical |
 | Compare table | all 8 rows of the arm comparison | byte-identical |
 | Findings sweep | every corpus-wide aggregate, 17 probes | byte-identical |
+| Telemetry summary | `gctx telemetry summary` over the same 26-event log | byte-identical |
+| Telemetry events | 5 query shapes, every field and its order | identical (see below) |
 
 **No divergences.** The cross-check found one, in `verified_at`. The Python implementation was
 corrected. The two now agree on every field. The section at the bottom records what it was.
@@ -59,6 +61,8 @@ re-run by hand:
 | `EvalHarnessTest` | all 8 rows of the compare table, as literals |
 | `FindingsSweepTest` | 44/149, 0/87, 137/568, the 6/1 counts, rank 3 → 1 |
 | `BundleParityTest` | the two `knowledge/` copies, byte-for-byte and parsed |
+| `TelemetrySummaryTest` | the committed golden summary, line for line |
+| `TelemetryParityTest` | the event schema against `docs/specs/observability.md`, and both fixture copies |
 
 ## The aggregates, recomputed
 
@@ -142,6 +146,45 @@ eight rows of the arm comparison, all seventeen probe scores, and the eval verdi
 This is narrow but real. It shows the published aggregates are a property of the corpus and the
 retrieval configuration, not of one particular index build. It still does not audit
 Elasticsearch's scoring — the same engine scored both.
+
+## Telemetry
+
+The observability slice is the one surface where the specification says outright which half is
+the contract: **the event schema, not the transport.** The Python sink is hand-rolled stdlib; the
+JVM writes through Jackson and could write through Micrometer later. What may not differ is the
+document.
+
+**The readback is byte-identical.** Both implementations were pointed at the same 26-event sample
+log on 2026-08-19:
+
+```console
+$ diff py.txt jvm.txt && echo IDENTICAL
+IDENTICAL
+```
+
+That is the whole report, header line included — route mix, the canonical hit/miss split, the
+floor score ranges, and both latency percentile rows. Two rules make it reachable rather than
+approximate, and both are chosen for portability rather than statistics: percentiles use
+**nearest-rank** with no interpolation, and percentages **truncate** rather than round. Either
+would drift a digit. `TelemetrySummaryTest` pins the whole output against the golden, and it was
+checked by breaking it — swapping truncation for `Math.round` fails on the route-mix line
+(`DETERMINISTIC 8 (31%)` instead of `30%`).
+
+**The emitted events agree.** Five query shapes were run through both CLIs against a fresh log —
+a canonical hit, a canonical miss, a link traversal, a routed deterministic question, and a live
+semantic question — and every event matched field for field, in the same key order, including the
+nested `latency_ms` keys. The pre-fusion relevance score behind the floor verdict agreed exactly
+(17.7 on both).
+
+**What deliberately differs: the bytes of the log file.** Python's `json.dumps` escapes non-ASCII
+(`—` for an em dash) and separates with `", "`; Jackson writes UTF-8 directly and compactly.
+Both produce the same JSON document, and either implementation reads the other's log — which is
+how the summary comparison above was run. The schema is the contract; its encoding is not.
+
+`TelemetryParityTest` guards the schema against `docs/specs/observability.md` in the Python repo
+rather than against the Python source, because the spec is what both implementations are built
+from. It was also checked by breaking it: adding one field to the emitted event fails the
+comparison and names the field.
 
 ## What the cross-check found
 

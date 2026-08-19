@@ -8,6 +8,8 @@ import io.github.cdevarenne.gctx.provenance.Citation;
 import io.github.cdevarenne.gctx.provenance.Envelope;
 import io.github.cdevarenne.gctx.router.Route;
 import io.github.cdevarenne.gctx.router.Router;
+import io.github.cdevarenne.gctx.telemetry.Telemetry;
+import io.github.cdevarenne.gctx.telemetry.TelemetrySink;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +21,10 @@ import java.util.Optional;
  * <p>The CLI and the MCP server must produce identical envelopes, so the citation contract lives
  * here once rather than being re-implemented per surface. The semantic half arrives through
  * {@link SemanticSearch}, so this class stays free of any retrieval technology.
+ *
+ * <p>It is also the single instrumentation site: both public entry points emit one telemetry event
+ * <em>after</em> their envelope is final, so both surfaces are instrumented once rather than once
+ * each. See {@code docs/specs/observability.md}.
  */
 public final class GroundedContextService {
 
@@ -26,14 +32,20 @@ public final class GroundedContextService {
 
     private final Bundle bundle;
     private final SemanticSearch semantic;
+    private final TelemetrySink telemetry;
 
     public GroundedContextService(Bundle bundle) {
-        this(bundle, SemanticSearch.UNAVAILABLE);
+        this(bundle, SemanticSearch.UNAVAILABLE, TelemetrySink.NONE);
     }
 
     public GroundedContextService(Bundle bundle, SemanticSearch semantic) {
+        this(bundle, semantic, TelemetrySink.NONE);
+    }
+
+    public GroundedContextService(Bundle bundle, SemanticSearch semantic, TelemetrySink telemetry) {
         this.bundle = bundle;
         this.semantic = semantic;
+        this.telemetry = telemetry;
     }
 
     public Bundle bundle() {
@@ -51,8 +63,29 @@ public final class GroundedContextService {
         };
     }
 
-    /** Envelope for one exact field, or the refusal when the bundle does not hold it. */
+    private static double elapsedMs(long startedNanos) {
+        return (System.nanoTime() - startedNanos) / 1_000_000.0;
+    }
+
+    /**
+     * Envelope for one exact field, or the refusal when the bundle does not hold it.
+     *
+     * <p>This is the entry point for a lookup that names its entity and field outright — {@code
+     * gctx lookup} and the MCP {@code lookup_canonical_fact} tool — so it records one event.
+     * {@link #ask} builds through the private helper instead, so a routed deterministic answer
+     * produces one event and not two.
+     */
     public Envelope lookupField(String entityId, String field, LocalDate asOf, Route decision) {
+        long started = System.nanoTime();
+        Envelope envelope = lookupEnvelope(entityId, field, asOf, decision);
+        double elapsed = elapsedMs(started);
+        Telemetry.record(telemetry, entityId + " " + field, envelope,
+                elapsed, null, elapsed, null, null);
+        return envelope;
+    }
+
+    private Envelope lookupEnvelope(
+            String entityId, String field, LocalDate asOf, Route decision) {
         Optional<LookupResult> result = Lookup.resolve(bundle, entityId, field);
         if (result.isEmpty()) {
             return Envelope.refusal(Envelope.DETERMINISTIC, decision);
@@ -65,29 +98,56 @@ public final class GroundedContextService {
                 decision);
     }
 
-    /** Route a natural-language question, then answer it on the path chosen. */
+    /**
+     * Route a natural-language question, then answer it on the path chosen.
+     *
+     * <p>Records one event per answered question, built from the finished envelope and emitted
+     * after it — so the same query returns the same answer whether the sink works, fails, or is
+     * absent.
+     */
     public Envelope ask(String query, LocalDate asOf) {
+        long started = System.nanoTime();
         Route decision = Router.route(query);
 
         if (Route.SEMANTIC.equals(decision.route())) {
-            return semanticAnswer(semanticCitations(query), decision);
+            long semanticStarted = System.nanoTime();
+            SemanticResult result = semanticProbe(query);
+            double semanticMs = elapsedMs(semanticStarted);
+            Envelope envelope = semanticAnswer(result.citations(), decision);
+            Telemetry.record(telemetry, query, envelope, null, semanticMs, elapsedMs(started),
+                    result.floorPassed(), result.floorScore());
+            return envelope;
         }
 
+        long deterministicStarted = System.nanoTime();
         Optional<String> entity = QueryMatcher.findEntity(bundle, query);
         Optional<String> field = entity
                 .map(id -> QueryMatcher.findField(bundle, query, id))
                 .orElseGet(() -> QueryMatcher.findField(bundle, query, null));
 
         Envelope exact = entity.isPresent() && field.isPresent()
-                ? lookupField(entity.get(), field.get(), asOf, decision)
+                ? lookupEnvelope(entity.get(), field.get(), asOf, decision)
                 : Envelope.refusal(Envelope.DETERMINISTIC, decision);
+        double deterministicMs = elapsedMs(deterministicStarted);
 
         if (!Route.BOTH.equals(decision.route())) {
+            Telemetry.record(telemetry, query, exact, deterministicMs, null, elapsedMs(started),
+                    null, null);
             return exact;
         }
 
-        // router.md: query both, prefer an exact hit where one exists, never drop provenance.
-        List<Citation> extra = semanticCitations(query);
+        long semanticStarted = System.nanoTime();
+        SemanticResult result = semanticProbe(query);
+        double semanticMs = elapsedMs(semanticStarted);
+
+        Envelope envelope = merge(exact, result.citations(), decision);
+        Telemetry.record(telemetry, query, envelope, deterministicMs, semanticMs,
+                elapsedMs(started), result.floorPassed(), result.floorScore());
+        return envelope;
+    }
+
+    /** router.md: query both, prefer an exact hit where one exists, never drop provenance. */
+    private Envelope merge(Envelope exact, List<Citation> extra, Route decision) {
         if (exact.isRefusal()) {
             return semanticAnswer(extra, decision);
         }
@@ -99,8 +159,8 @@ public final class GroundedContextService {
         return Envelope.grounded(exact.answer(), merged, Envelope.MIXED, decision);
     }
 
-    private List<Citation> semanticCitations(String query) {
-        return semantic.search(query, SEMANTIC_RESULTS);
+    private SemanticResult semanticProbe(String query) {
+        return semantic.probe(query, SEMANTIC_RESULTS);
     }
 
     /**

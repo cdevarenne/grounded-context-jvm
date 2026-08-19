@@ -2,11 +2,18 @@ package io.github.cdevarenne.gctx.app;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.cdevarenne.gctx.app.telemetry.TelemetryFixtures;
+import io.github.cdevarenne.gctx.app.telemetry.TelemetrySummary;
 import io.github.cdevarenne.gctx.service.SemanticSearch;
+import io.github.cdevarenne.gctx.telemetry.TelemetrySink;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
 /**
@@ -28,7 +35,10 @@ class GctxCommandTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         try {
             System.setOut(new PrintStream(captured, true, StandardCharsets.UTF_8));
-            int code = new CommandLine(new GctxCommand(SemanticSearch.UNAVAILABLE)).execute(args);
+            // NONE, not the real sink: a CLI test must not append to the repo's telemetry log.
+            // The emit path still runs, so a sink contract that broke would surface here.
+            int code = new CommandLine(
+                    new GctxCommand(SemanticSearch.UNAVAILABLE, TelemetrySink.NONE)).execute(args);
             return new Result(captured.toString(StandardCharsets.UTF_8), code);
         } finally {
             System.setOut(original);
@@ -120,5 +130,32 @@ class GctxCommandTest {
     void entities_flags_staleness_against_the_as_of_date() {
         assertThat(run("--as-of", "2026-10-01", "entities").out())
                 .contains("anthropic.claude-opus-5  [model]  human-reviewed ⚠ STALE");
+    }
+
+    @Test
+    void telemetry_summary_reads_a_log_with_no_cluster(@TempDir Path dir) throws IOException {
+        Path log = dir.resolve("telemetry.ndjson");
+        Files.writeString(log, TelemetryFixtures.read(TelemetryFixtures.SAMPLE),
+                StandardCharsets.UTF_8);
+
+        Result result = run("telemetry", "summary", "--log", log.toString());
+        assertThat(result.exitCode()).isZero();
+        assertThat(result.out()).isEqualTo(TelemetrySummary.render(log));
+        assertThat(result.out()).contains("route mix        DETERMINISTIC 8 (30%)");
+    }
+
+    @Test
+    void telemetry_summary_on_a_missing_log_says_so(@TempDir Path dir) {
+        Result result = run("telemetry", "summary", "--log", dir.resolve("absent").toString());
+        assertThat(result.exitCode()).isZero();
+        assertThat(result.out()).contains("no events recorded yet");
+    }
+
+    @Test
+    void telemetry_needs_a_subcommand() {
+        // argparse marks the nested parser required=; picocli has to be told the same way.
+        Result result = run("telemetry");
+        assertThat(result.exitCode()).isEqualTo(GctxCommand.EXIT_ERROR);
+        assertThat(result.out()).contains("summary").contains("index");
     }
 }

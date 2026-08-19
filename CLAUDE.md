@@ -37,6 +37,12 @@ present, so it describes an environment rather than this repo. Both builds emit 
 Gradle emits HTML; that is the report. Drift-guard the published numbers that *are* repo facts —
 the bundle, `docs/index-spec.md`, the eval output — not the size of the suite.
 
+**Telemetry is an observer.** The event is built from a finished envelope and emitted after it,
+best-effort, so a broken sink can never change or block an answer. Its **schema** is the contract
+with the Python repo — `TelemetryParityTest` compares it to `docs/specs/observability.md` there —
+while the transport is free to change. The summary output is byte-identical by design: percentiles
+are nearest-rank and percentages truncate, so do not "improve" either.
+
 **Refusal is a result, not a failure.** Exit 1 is a grounded refusal; exit 2 is a real error. An
 unreachable Elasticsearch returns `Not found in the grounded sources.` Never fall back to the
 model's own memory, and never let the semantic path answer an exact fact.

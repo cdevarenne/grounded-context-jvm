@@ -71,6 +71,14 @@
       <version>${mcp.version}</version>
     </dependency>
 
+    <!-- Reading the telemetry log back. Already on this module's classpath via the MCP SDK and
+         the Elasticsearch client; declared so the use is not a transitive accident. The version
+         comes from the Spring Boot BOM imported above. -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

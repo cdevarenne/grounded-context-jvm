@@ -7,6 +7,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import io.github.cdevarenne.gctx.provenance.Citation;
+import io.github.cdevarenne.gctx.service.SemanticResult;
 import io.github.cdevarenne.gctx.service.SemanticSearch;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -130,10 +131,45 @@ public final class HybridSemanticSearch implements SemanticSearch {
      * chunks. The pre-fusion sparse score keeps the magnitude, so that is what the floor reads.
      */
     public boolean isRelevant(String query, double relevanceFloor) {
+        return floorVerdict(query, relevanceFloor).cleared();
+    }
+
+    /** The floor verdict and the score behind it. A null score means nothing came back at all. */
+    record FloorVerdict(boolean cleared, Double score) {
+    }
+
+    private FloorVerdict floorVerdict(String query, double relevanceFloor) {
         List<Citation> top = semanticOnly(query, 1);
-        return !top.isEmpty()
-                && top.getFirst().score() != null
-                && top.getFirst().score() >= relevanceFloor;
+        if (top.isEmpty()) {
+            return new FloorVerdict(false, null);
+        }
+        double score = top.getFirst().score() == null ? 0.0 : top.getFirst().score();
+        return new FloorVerdict(score >= relevanceFloor, score);
+    }
+
+    /**
+     * Citations plus what the floor did — the signal the answer envelope cannot carry.
+     *
+     * <p>The probe runs here rather than inside {@link #search} because its verdict is telemetry,
+     * not retrieval. Both calls together are the same two round trips {@code search} already makes
+     * on its own: the probe is not a new cost, only a visible one.
+     *
+     * <p>A query at 7.9 against a floor of 8.0 is a corpus gap — in domain and not yet answerable.
+     * One at 1.7 is off topic and always will be. Both refuse, and only the score tells them apart
+     * afterwards, which is why it is reported alongside the boolean.
+     */
+    @Override
+    public SemanticResult probe(String query, int size) {
+        if (Double.isNaN(floor)) {
+            // The gate is disabled, so there is no verdict to report — absent, not blocked.
+            return new SemanticResult(run(hybrid(query), query, size, METHOD), null, null);
+        }
+        FloorVerdict verdict = floorVerdict(query, floor);
+        if (!verdict.cleared()) {
+            return new SemanticResult(List.of(), false, verdict.score());
+        }
+        return new SemanticResult(
+                run(hybrid(query), query, size, METHOD), true, verdict.score());
     }
 
     /** BM25 alone — one comparison arm for the retrieval-arm table. */

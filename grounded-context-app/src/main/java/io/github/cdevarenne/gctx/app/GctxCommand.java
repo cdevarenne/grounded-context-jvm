@@ -1,5 +1,9 @@
 package io.github.cdevarenne.gctx.app;
 
+import io.github.cdevarenne.gctx.app.telemetry.NdjsonTelemetrySink;
+import io.github.cdevarenne.gctx.app.telemetry.TelemetryIndexer;
+import io.github.cdevarenne.gctx.app.telemetry.TelemetryLog;
+import io.github.cdevarenne.gctx.app.telemetry.TelemetrySummary;
 import io.github.cdevarenne.gctx.bundle.Bundle;
 import io.github.cdevarenne.gctx.bundle.Concept;
 import io.github.cdevarenne.gctx.provenance.Envelope;
@@ -8,6 +12,7 @@ import io.github.cdevarenne.gctx.router.Route;
 import io.github.cdevarenne.gctx.router.Router;
 import io.github.cdevarenne.gctx.service.GroundedContextService;
 import io.github.cdevarenne.gctx.service.SemanticSearch;
+import io.github.cdevarenne.gctx.telemetry.TelemetrySink;
 import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -43,6 +48,7 @@ import picocli.CommandLine.ParentCommand;
             GctxCommand.EvalCommand.class,
             GctxCommand.MeasureCommand.class,
             GctxCommand.IndexCommand.class,
+            GctxCommand.TelemetryCommand.class,
         })
 public class GctxCommand implements Callable<Integer> {
 
@@ -61,9 +67,17 @@ public class GctxCommand implements Callable<Integer> {
     boolean json;
 
     private final SemanticSearch semantic;
+    private final TelemetrySink telemetry;
 
+    /** The only public constructor, so Spring has nothing to disambiguate. */
     public GctxCommand(SemanticSearch semantic) {
+        this(semantic, new NdjsonTelemetrySink());
+    }
+
+    /** Injects the sink the way {@code semantic} is injected, so a test writes nowhere real. */
+    GctxCommand(SemanticSearch semantic, TelemetrySink telemetry) {
         this.semantic = semantic;
+        this.telemetry = telemetry;
     }
 
     @Override
@@ -77,7 +91,8 @@ public class GctxCommand implements Callable<Integer> {
     }
 
     GroundedContextService service() {
-        return new GroundedContextService(Bundle.load(BundleLocator.resolve(bundle)), semantic);
+        return new GroundedContextService(
+                Bundle.load(BundleLocator.resolve(bundle)), semantic, telemetry);
     }
 
     /** Print an envelope and translate it into the process exit code. */
@@ -351,6 +366,85 @@ public class GctxCommand implements Callable<Integer> {
             Thread.currentThread().join();
             server.close();
             return 0;
+        }
+    }
+
+    @Command(name = "telemetry", description = "read back what the layer recorded about itself",
+            subcommands = {
+                TelemetryCommand.SummaryCommand.class,
+                TelemetryCommand.IndexCommand.class,
+            })
+    static class TelemetryCommand implements Callable<Integer> {
+        @ParentCommand GctxCommand parent;
+
+        /** A bare `telemetry` names its subcommands, matching argparse's required= on the nest. */
+        @Override
+        public Integer call() {
+            CommandLine.usage(this, System.out);
+            return EXIT_ERROR;
+        }
+
+        @Command(name = "summary", description = "aggregate the local log — no cloud needed")
+        static class SummaryCommand implements Callable<Integer> {
+            @Option(names = "--log", paramLabel = "PATH",
+                    description = "the ndjson log (default: the configured sink)")
+            String log;
+
+            @Override
+            public Integer call() {
+                // print(..., end="") on the Python side: render() already ends with a newline.
+                System.out.print(TelemetrySummary.render(NdjsonTelemetrySink.resolve(log)));
+                return 0;
+            }
+        }
+
+        @Command(name = "index", description = "project the log into Elasticsearch")
+        static class IndexCommand implements Callable<Integer> {
+            @Option(names = "--log", paramLabel = "PATH",
+                    description = "the ndjson log (default: the configured sink)")
+            String log;
+
+            @Option(names = "--index", paramLabel = "INDEX", description = "target index")
+            String index = TelemetryIndexer.TELEMETRY_INDEX;
+
+            @Option(names = "--recreate", description = "delete and rebuild the index first")
+            boolean recreate;
+
+            @Override
+            public Integer call() throws Exception {
+                PrintWriter out = new PrintWriter(System.out, true);
+                var client = io.github.cdevarenne.gctx.app.es.ElasticsearchConfiguration.client();
+                if (client.isEmpty()) {
+                    // An absent cluster is a message and a clean exit, never an error: the log is
+                    // still the source of truth and the summary still reads it.
+                    out.println(TelemetryIndexer.UNAVAILABLE);
+                    return 0;
+                }
+                java.nio.file.Path path = NdjsonTelemetrySink.resolve(log);
+                String stale = TelemetryLog.read(path).stream()
+                        .map(event -> event.get("schema_version"))
+                        .filter(version -> version instanceof Number n
+                                && n.intValue() != io.github.cdevarenne.gctx.telemetry
+                                        .TelemetryEvent.SCHEMA_VERSION)
+                        .map(String::valueOf)
+                        .distinct()
+                        .sorted()
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("");
+                if (!stale.isEmpty()) {
+                    out.println("note: log holds schema_version " + stale + " events alongside "
+                            + io.github.cdevarenne.gctx.telemetry.TelemetryEvent.SCHEMA_VERSION
+                            + "; the mapping covers the union");
+                }
+
+                int projected = new TelemetryIndexer(client.get()).project(path, index, recreate);
+                if (projected == 0) {
+                    out.println("nothing to project — " + path + " holds no events");
+                    return 0;
+                }
+                out.println("projected " + projected + " events from " + path + " into " + index);
+                return 0;
+            }
         }
     }
 

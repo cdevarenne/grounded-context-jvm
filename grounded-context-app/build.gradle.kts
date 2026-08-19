@@ -20,6 +20,9 @@ dependencies {
     implementation(libs.mcp.core)
     implementation(libs.mcp.json.jackson2)
 
+    // Reading the telemetry log back; declared so the use is not a transitive accident.
+    implementation(libs.jackson.databind)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.spring.boot.starter.test)
     // See the core module: Gradle 9 needs the launcher, Surefire supplies its own.

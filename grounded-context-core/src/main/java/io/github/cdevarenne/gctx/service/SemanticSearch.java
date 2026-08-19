@@ -22,4 +22,15 @@ public interface SemanticSearch {
 
     /** Grounded passages for an open question, best first. */
     List<Citation> search(String query, int size);
+
+    /**
+     * The same passages, plus what the relevance floor did.
+     *
+     * <p>Separate from {@link #search} because the floor's verdict is a telemetry signal the answer
+     * envelope has nowhere to carry, and because an engine that has no floor should not have to
+     * invent one. The default reports no verdict, which is honest: absent, not blocked.
+     */
+    default SemanticResult probe(String query, int size) {
+        return new SemanticResult(search(query, size), null, null);
+    }
 }

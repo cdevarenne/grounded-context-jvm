@@ -156,6 +156,37 @@ Gradle build puts the jar somewhere else, so change that one path to
 
 All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 
+### What the layer recorded about itself
+
+Every answered query appends one event to a local log — no cluster, no configuration, and nothing
+new on the answer path. The readback needs no cloud either, so this works on a clone with no
+credentials:
+
+```bash
+java -jar grounded-context-app/target/gctx.jar telemetry summary
+```
+
+It reports the router's decisions, the canonical hit/miss split (the curation backlog, measured),
+the refusal rate, how far below the relevance floor the blocked queries landed, and per-path
+latency. The log is `var/telemetry.ndjson` at the repo root, gitignored; `GCTX_TELEMETRY_SINK`
+moves it and `GCTX_TELEMETRY=0` turns recording off.
+
+With Elasticsearch configured, the log can be projected into a queryable index:
+
+```bash
+java -jar grounded-context-app/target/gctx.jar telemetry index
+```
+
+The log is the source of truth and the index is a projection over it, rebuildable from it and
+never the reverse — the same relationship `knowledge/` has to the corpus index. Telemetry is an
+observer: it is built and emitted **after** the answer envelope is final, it is best-effort, and a
+sink that fails cannot change or block an answer. Each of those is pinned by a test that breaks
+when the guarantee does.
+
+The event schema is field-for-field the Python one, guarded by `TelemetryParityTest`, and
+`gctx telemetry summary` prints byte-identical output over the same log — see
+[`docs/parity.md`](docs/parity.md#telemetry).
+
 ### Tests
 
 ```bash
@@ -183,6 +214,7 @@ about your environment rather than about the repo.
 | Findings sweep (`measure`) | ✅ reproduces every published aggregate |
 | Corpus indexer (`index`) | ✅ chunking byte-identical to the reference index |
 | Bundle drift check against the Python repo | ✅ fails on divergence, skips when absent |
+| Observability — per-query telemetry (`telemetry summary` / `index`) | ✅ same event schema, byte-identical readback |
 | Maven and Gradle builds | ✅ both build all of it; versions drift-tested against each other |
 | Test suite | ✅ JUnit XML from both builds, HTML from Gradle; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ [#3](https://github.com/cdevarenne/grounded-context-jvm/issues/3), via the `SemanticSearch` seam |
