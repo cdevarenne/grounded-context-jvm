@@ -67,6 +67,10 @@ probabilistic half plugs into, and the reason the deterministic path stays frame
 
 ## Run it
 
+Step by step, from `git clone` to a citation block and on to your own Elasticsearch and your own
+documents, with every command's real output: **[docs/quickstart.md](docs/quickstart.md)**. The
+short version follows.
+
 Requires **Java 21+** and either Maven or Gradle. Both build the same two modules from the same
 dependency versions, so pick the one your team already uses. The repo develops against a newer
 JDK, but both set the compiler release to 21 so an older LTS can still build it — the same
@@ -221,8 +225,6 @@ about your environment rather than about the repo.
 
 **What's next.** Open work is tracked as [GitHub issues](https://github.com/cdevarenne/grounded-context-jvm/issues):
 
-- [#1 — a quickstart from clone to first grounded answer](https://github.com/cdevarenne/grounded-context-jvm/issues/1),
-  written around the adopter path: your Elasticsearch, your documents
 - [#2 — drive the MCP server from a real agent runtime](https://github.com/cdevarenne/grounded-context-jvm/issues/2).
   So far only a hand-written JSON-RPC client has driven it, which proves the wire contract and
   not that an agent uses it correctly
