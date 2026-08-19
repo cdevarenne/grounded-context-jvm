@@ -123,7 +123,10 @@ java -jar grounded-context-app/target/gctx.jar index --corpus ./my-docs --recrea
 java -jar grounded-context-app/target/gctx.jar ask "how do we rotate credentials?"
 ```
 
-`ES_INDEX` selects the index for every command; it defaults to the reference corpus. The indexer
+`ES_INDEX` selects the index for every command; it defaults to the reference corpus.
+`ES_INFERENCE_ID` selects the ELSER endpoint the mapping is built against, defaulting to
+`.elser-2-elasticsearch` — which is preconfigured on Serverless, while a self-managed cluster
+names its own. Both are read from the environment or a gitignored `.env`. The indexer
 creates the mapping the retrieval path depends on — the `exact_token` analyzer, the `content.exact`
 subfield, and `semantic_text` wired to ELSER — so the index is built the same way whoever builds it.
 
@@ -167,7 +170,7 @@ All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 | Corpus indexer (`index`) | ✅ chunking byte-identical to the reference index |
 | Bundle drift check against the Python repo | ✅ fails on divergence, skips when absent |
 | Maven and Gradle builds | ✅ both build all of it; versions drift-tested against each other |
-| Test suite | ✅ 110 tests; cluster tests skip without credentials |
+| Test suite | ✅ 114 tests; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ planned, via the `SemanticSearch` seam |
 
 ---

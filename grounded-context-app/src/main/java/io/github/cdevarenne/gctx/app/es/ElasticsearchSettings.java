@@ -22,28 +22,38 @@ public final class ElasticsearchSettings {
     public static final String DEFAULT_INDEX = "grounded-context-corpus";
 
     /**
-     * The index every command reads and writes.
+     * The preconfigured ELSER endpoint on Elastic Cloud Serverless.
      *
-     * <p>Configurable because a team adopting this will have its own corpus, and hard-coding the
-     * name would force them to edit the source. Resolved once at startup from {@code ES_INDEX},
-     * falling back to the reference corpus.
+     * <p>Self-managed clusters name theirs differently — {@code elser_v2}, or whatever
+     * {@code PUT _inference/sparse_embedding/<id>} created — so this cannot be a constant if the
+     * code is to run anywhere but the cluster it was written against.
      */
-    public static final String INDEX = resolveIndex();
-
-    /** Preconfigured ELSER endpoint on Elastic Cloud Serverless. */
-    public static final String INFERENCE_ID = ".elser-2-elasticsearch";
+    public static final String DEFAULT_INFERENCE_ID = ".elser-2-elasticsearch";
 
     public static final String URL_VAR = "ES_URL";
     public static final String API_KEY_VAR = "ES_API_KEY";
     public static final String INDEX_VAR = "ES_INDEX";
+    public static final String INFERENCE_ID_VAR = "ES_INFERENCE_ID";
 
-    private static String resolveIndex() {
-        String fromEnv = System.getenv(INDEX_VAR);
+    /**
+     * The index every command reads and writes.
+     *
+     * <p>Configurable because a team adopting this will have its own corpus, and hard-coding the
+     * name would force them to edit the source. Resolved once at class initialization.
+     */
+    public static final String INDEX = setting(INDEX_VAR, DEFAULT_INDEX);
+
+    /** The inference endpoint the index is mapped against. Same reasoning as {@link #INDEX}. */
+    public static final String INFERENCE_ID = setting(INFERENCE_ID_VAR, DEFAULT_INFERENCE_ID);
+
+    /** One configurable value: the environment, then a gitignored {@code .env}, then the default. */
+    static String setting(String name, String fallback) {
+        String fromEnv = System.getenv(name);
         if (fromEnv != null && !fromEnv.isBlank()) {
             return fromEnv.strip();
         }
-        String fromFile = fromEnvFile().getOrDefault(INDEX_VAR, "").strip();
-        return fromFile.isEmpty() ? DEFAULT_INDEX : fromFile;
+        String fromFile = fromEnvFile().getOrDefault(name, "").strip();
+        return fromFile.isEmpty() ? fallback : fromFile;
     }
 
     static final String ENV_FILE = ".env";
