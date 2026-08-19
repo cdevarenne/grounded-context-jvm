@@ -19,7 +19,7 @@ Most enterprise backends run on the JVM. This repo makes the pattern build-and-r
 stack. A team can clone it, point it at their own Elasticsearch and their own documents, and have
 a grounded context layer running — without rebuilding it from a blog post.
 
-It is a complete implementation, not one half of one. It does not fetch documents. It does
+It is a complete implementation. It does not fetch documents. It does
 everything else: parse the knowledge bundle, answer exact lookups, **build the semantic index**,
 run hybrid retrieval, serve the tools over MCP, and evaluate the result.
 
@@ -27,7 +27,7 @@ Start at [Run it](#run-it). To use your own documents, see
 [Bring your own corpus](#bring-your-own-corpus).
 
 **It also reproduces the reference implementation faithfully.** That is what makes it safe to
-adopt: a team that indexes with this code gets the behaviour the
+adopt: a team that indexes with this code gets the behavior the
 [Python repo](https://github.com/cdevarenne/grounded-context) documents. Every published figure
 was recomputed here, and the comparison found one defect in the reference, now fixed. The
 evidence — and the exact limits of what it shows — is in [**docs/parity.md**](docs/parity.md).
@@ -109,7 +109,7 @@ java -jar grounded-context-app/target/gctx.jar eval --compare rank_constant     
 java -jar grounded-context-app/target/gctx.jar measure                               # the corpus-wide figures
 ```
 
-Without credentials the exploratory branch returns `Not found in the grounded sources.` rather
+Without credentials the exploratory path returns `Not found in the grounded sources.` rather
 than failing. An unavailable engine is a refusal, never an error, and never a fallback to the
 model's own memory.
 
@@ -155,7 +155,7 @@ runs `uv run --extra mcp gctx-mcp`. Build the jar first. Three tools: `lookup_ca
 `ask_grounded`, `list_entities`.
 
 It names the Maven output, because JSON carries no comment that could offer an alternative. A
-Gradle build puts the jar somewhere else, so change that one path to
+Gradle build puts the jar in a different location, so change that one path to:
 `grounded-context-app/build/libs/gctx.jar`.
 
 All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
@@ -200,9 +200,7 @@ mvn verify         # JUnit XML + text summaries in grounded-context-*/target/sur
 
 Cluster tests skip without Elasticsearch credentials, and the tests pinning reference-corpus
 numbers skip on any other index — so a green run on a partial setup is the expected outcome, not
-a sign of a broken checkout. The reports say which tests ran and which were skipped. This README
-states no total, because a total that changes with your credentials and your corpus is a fact
-about your environment rather than about the repo.
+a sign of a broken checkout. The reports say which tests ran and which were skipped.
 
 ---
 
@@ -223,7 +221,7 @@ about your environment rather than about the repo.
 | Test suite | ✅ JUnit XML from both builds, HTML from Gradle; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ [#3](https://github.com/cdevarenne/grounded-context-jvm/issues/3), via the `SemanticSearch` seam |
 
-**What's next.** Open work is tracked as [GitHub issues](https://github.com/cdevarenne/grounded-context-jvm/issues):
+**What's next.** Work to be done is tracked as [GitHub issues](https://github.com/cdevarenne/grounded-context-jvm/issues):
 
 - [#2 — drive the MCP server from a real agent runtime](https://github.com/cdevarenne/grounded-context-jvm/issues/2).
   So far only a hand-written JSON-RPC client has driven it, which proves the wire contract and
@@ -251,10 +249,20 @@ alongside, or wherever `GCTX_REFERENCE_BUNDLE` points.
 
 ## Out of scope
 
-- **Read-only.** No writes, no actions, no tool execution.
+- **Read-only.** It answers questions. It does not do things. Nothing you ask it will edit a
+  document, change a record, send a message, or call another system on your behalf — there is no
+  "file the ticket" or "restart the service" here. You get an answer with a citation, or you get
+  a refusal, and that is the whole of it.
+
+  It does write in two places, both about itself rather than about your systems. Every answered
+  query appends one line to a local telemetry log (`var/telemetry.ndjson`), and `gctx index` and
+  `gctx telemetry index` write to Elasticsearch when you run them by hand. Neither can change an
+  answer: the telemetry event is built *after* the answer is final, and indexing is a separate
+  step you invoke yourself.
 - **No auth, no multi-tenancy, no scale story.** The MCP server runs over stdio as a local
   subprocess with no authentication layer; a remote transport would need one.
-- **No corpus tooling.** Fetching and indexing stay in the Python repo, deliberately.
+- **No corpus fetching.** Collecting the source pages stays in the Python repo, deliberately.
+  Indexing does not: `gctx index` builds the index here, which is the whole point of the port.
 - **The canonical source is the filesystem.** `Lookup` reads a `Bundle` parsed from Markdown, and
   nothing sits between them. The probabilistic half has a seam — `SemanticSearch`, an interface
   `core` defines and never implements — and the deterministic half deliberately does not yet have

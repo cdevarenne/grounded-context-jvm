@@ -1,12 +1,13 @@
 # Quickstart — clone to first grounded answer
 
 From `git clone` to an answer with a citation block, then to the same thing running against
-**your** Elasticsearch and **your** documents — which is the reason this port exists.
+**your** Elasticsearch and **your** documents.
 
 Part 1 needs no cloud account and no API key. Part 2 is the adopter path and needs a cluster.
-Every output below is captured from a real run, not typed by hand.
+Every output below is captured from a real run, not typed by hand — only the checkout path is
+shortened.
 
-The Python reference implementation has its own quickstart with the same shape:
+The Python reference implementation has its own quickstart:
 [grounded-context/docs/quickstart.md](https://github.com/cdevarenne/grounded-context/blob/main/docs/quickstart.md).
 
 ---
@@ -115,7 +116,7 @@ Answer: POST
 The `traversed:` line is not decoration. One hop is one more place an answer could have gone
 wrong, so the hop is in the audit trail.
 
-### 5. Ask in English, and read the router's reasoning
+### 5. Ask in plain English, and read the router's reasoning
 
 ```console
 $ gctx ask "What is the exact context window of claude-opus-5?"
@@ -154,7 +155,7 @@ design protects: the layer never falls back to a model's own memory.
 
 ### 7. Staleness
 
-Every canonical fact carries a `stale_after` date. Pretend it is October:
+Every canonical fact carries a `stale_after` date. Ask again as if that date had passed:
 
 ```console
 $ gctx --as-of 2026-10-01 lookup anthropic.claude-opus-5 context_window_tokens
@@ -226,7 +227,7 @@ gctx ask "how do we rotate credentials?"
 
 **What does not port: fetching.** The Python repo's `scripts/fetch_corpus.py` collects *its*
 reference corpus from public documentation. Deliberately not reimplemented — an adopting team
-already has its documents, and a fetcher tuned to someone else's sources is not useful to them.
+already has its own documents, and a fetcher tuned to someone else's sources is not useful.
 
 ### What an exploratory answer looks like
 
@@ -294,7 +295,7 @@ new on the answer path — so the readback works on the clone you just built:
 
 ```console
 $ gctx telemetry summary
-gctx telemetry summary — /opt/devel/DevMoi/grounded-context-jvm/var/telemetry.ndjson
+gctx telemetry summary — /opt/devel/grounded-context-jvm/var/telemetry.ndjson
 events: 5   window: 2026-08-19T22:00:41.824Z .. 2026-08-19T22:00:47.790Z
 
 route mix        DETERMINISTIC 1 (20%)   SEMANTIC 0 (0%)   BOTH 0 (0%)   DIRECT 4 (80%)
@@ -322,7 +323,7 @@ With Elasticsearch configured, project the log into a queryable index:
 
 ```console
 $ gctx telemetry index
-projected 6 events from /opt/devel/DevMoi/grounded-context-jvm/var/telemetry.ndjson into grounded-context-telemetry
+projected 6 events from /opt/devel/grounded-context-jvm/var/telemetry.ndjson into grounded-context-telemetry
 ```
 
 The log is the source of truth; the index is a projection over it, rebuildable from it and never
@@ -350,7 +351,7 @@ mvn verify         # JUnit XML + text summaries in grounded-context-*/target/sur
 | `BundleParityTest`, `TelemetryParityTest` | the Python repo is not checked out alongside |
 
 The second one matters most for you: **a green build against your own documents is the expected
-outcome**, not a sign the port is broken. Tests pinning corpus-specific literals — 320 chunks, 44
+outcome**, not a sign the Java port is broken. Tests pinning corpus-specific literals — 320 chunks, 44
 of 149, the eight arm-comparison rows, the seventeen probe scores — describe the reference corpus,
 not the code. Behavioral tests (citation shape, refusal, routing) run on any corpus.
 
