@@ -47,6 +47,12 @@ val checkReadmeTestCount = tasks.register<JavaExec>("checkReadmeTestCount") {
     // The module directory arrives as an argument rather than being inferred from the working
     // directory, matching the Maven build and the class's own contract.
     args(projectDir.absolutePath)
+    onlyIf {
+        // `--tests` deselects rather than skips, so no skip event reaches TestCountRecorder and
+        // a narrowed run reads as a shrunken suite. The recorder cannot tell the difference; the
+        // invocation can.
+        gradle.startParameter.taskRequests.none { "--tests" in it.args }
+    }
 }
 
 tasks.check {
