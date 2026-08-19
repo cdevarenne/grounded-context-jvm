@@ -199,6 +199,13 @@ alongside, or wherever `GCTX_REFERENCE_BUNDLE` points.
 - **No auth, no multi-tenancy, no scale story.** The MCP server runs over stdio as a local
   subprocess with no authentication layer; a remote transport would need one.
 - **No corpus tooling.** Fetching and indexing stay in the Python repo, deliberately.
+- **The canonical source is the filesystem.** `Lookup` reads a `Bundle` parsed from Markdown, and
+  nothing sits between them. The probabilistic half has a seam — `SemanticSearch`, an interface
+  `core` defines and never implements — and the deterministic half deliberately does not yet have
+  its counterpart. A `CanonicalFactProvider` interface, with the Markdown parser as one
+  implementation, is what would let a team point the guaranteed path at a compliance database or a
+  ServiceNow API instead. It is named here rather than built, because a seam with one
+  implementation proves nothing until there is a second.
 - **Small-n evaluation.** The eval set is illustrative — which engine answers, and that
   provenance is present. It is **not** a benchmark and no performance claims are made from it.
 
