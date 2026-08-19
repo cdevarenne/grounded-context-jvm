@@ -94,8 +94,9 @@ malformed bundle.
 
 ### Semantic path — needs Elasticsearch + ELSER
 
-Set `ES_URL` and `ES_API_KEY` in the environment or in a gitignored `.env` at the repo root.
-**This repo ships no `.env`**, and it will not find one belonging to a sibling checkout.
+Set `ES_URL` and `ES_API_KEY` in the environment or in a gitignored `.env` at the repo root —
+[`.env.example`](.env.example) is the template. **This repo ships no `.env`**, and it will not
+find one belonging to a sibling checkout.
 
 ```bash
 java -jar grounded-context-app/target/gctx.jar ask "How should I chunk documents for retrieval?"
@@ -171,7 +172,7 @@ All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 | Bundle drift check against the Python repo | ✅ fails on divergence, skips when absent |
 | Maven and Gradle builds | ✅ both build all of it; versions drift-tested against each other |
 | Test suite | ✅ 114 tests; cluster tests skip without credentials |
-| Embabel ingestion / post-search actions | ⬜ planned, via the `SemanticSearch` seam |
+| Embabel ingestion / post-search actions | ⬜ [#3](https://github.com/cdevarenne/grounded-context-jvm/issues/3), via the `SemanticSearch` seam |
 
 **What's next.** Open work is tracked as [GitHub issues](https://github.com/cdevarenne/grounded-context-jvm/issues):
 
