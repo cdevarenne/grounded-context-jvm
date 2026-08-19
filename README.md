@@ -167,7 +167,7 @@ All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 | Corpus indexer (`index`) | ✅ chunking byte-identical to the reference index |
 | Bundle drift check against the Python repo | ✅ fails on divergence, skips when absent |
 | Maven and Gradle builds | ✅ both build all of it; versions drift-tested against each other |
-| Test suite | ✅ 109 tests; cluster tests skip without credentials |
+| Test suite | ✅ 110 tests; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ planned, via the `SemanticSearch` seam |
 
 ---

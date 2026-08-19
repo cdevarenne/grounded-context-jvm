@@ -70,7 +70,7 @@ public final class GroundedContextService {
         Route decision = Router.route(query);
 
         if (Route.SEMANTIC.equals(decision.route())) {
-            return semanticAnswer(query, decision);
+            return semanticAnswer(semanticCitations(query), decision);
         }
 
         Optional<String> entity = QueryMatcher.findEntity(bundle, query);
@@ -89,7 +89,7 @@ public final class GroundedContextService {
         // router.md: query both, prefer an exact hit where one exists, never drop provenance.
         List<Citation> extra = semanticCitations(query);
         if (exact.isRefusal()) {
-            return semanticAnswer(query, decision);
+            return semanticAnswer(extra, decision);
         }
         if (extra.isEmpty()) {
             return exact;
@@ -103,9 +103,13 @@ public final class GroundedContextService {
         return semantic.search(query, SEMANTIC_RESULTS);
     }
 
-    /** Grounded passages, best first. The caller writes prose; this supplies the ground. */
-    private Envelope semanticAnswer(String query, Route decision) {
-        List<Citation> citations = semanticCitations(query);
+    /**
+     * Grounded passages, best first. The caller writes prose; this supplies the ground.
+     *
+     * <p>Takes citations rather than fetching them, so a caller that has already retrieved cannot
+     * retrieve a second time for the same query.
+     */
+    private Envelope semanticAnswer(List<Citation> citations, Route decision) {
         String answer = citations.isEmpty() ? "" : citations.getFirst().snippet();
         return Envelope.grounded(answer, citations, Envelope.SEMANTIC, decision);
     }

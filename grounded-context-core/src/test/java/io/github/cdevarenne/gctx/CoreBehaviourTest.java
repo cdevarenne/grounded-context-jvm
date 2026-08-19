@@ -14,6 +14,7 @@ import io.github.cdevarenne.gctx.router.Router;
 import io.github.cdevarenne.gctx.service.GroundedContextService;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -206,6 +207,29 @@ class CoreBehaviourTest {
         // The exact hit leads, so the block is still an Answer rather than a Top passage.
         assertThat(Renderer.render(envelope)).startsWith("router: BOTH");
         assertThat(Renderer.render(envelope)).contains("Answer: 128,000");
+    }
+
+    @Test
+    void both_retrieves_once_per_query() {
+        // The semantic arm is a network round trip, and per-path latency must report one of them.
+        List<String> calls = new ArrayList<>();
+        GroundedContextService svc = new GroundedContextService(Bundle.load(ROOT),
+                (query, size) -> {
+                    calls.add(query);
+                    return List.of();
+                });
+
+        // Cross-entity, so the router says BOTH, and the bundle holds no single exact answer.
+        String query = "Which of these models support vision?";
+        assertThat(Router.route(query).route())
+                .as("if routing changed, the assertion below would prove nothing")
+                .isEqualTo(Route.BOTH);
+
+        svc.ask(query, FRESH);
+
+        assertThat(calls)
+                .as("the semantic arm ran %d times for one query", calls.size())
+                .containsExactly(query);
     }
 
     @Test
