@@ -173,6 +173,14 @@ All logging goes to stderr. Over stdio, stdout *is* the JSON-RPC channel.
 | Test suite | ✅ 114 tests; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ planned, via the `SemanticSearch` seam |
 
+**What's next.** Open work is tracked as [GitHub issues](https://github.com/cdevarenne/grounded-context-jvm/issues):
+
+- [#1 — a quickstart from clone to first grounded answer](https://github.com/cdevarenne/grounded-context-jvm/issues/1),
+  written around the adopter path: your Elasticsearch, your documents
+- [#2 — drive the MCP server from a real agent runtime](https://github.com/cdevarenne/grounded-context-jvm/issues/2).
+  So far only a hand-written JSON-RPC client has driven it, which proves the wire contract and
+  not that an agent uses it correctly
+
 ---
 
 ## Learn more
