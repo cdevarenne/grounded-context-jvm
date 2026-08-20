@@ -25,6 +25,8 @@ public final class QueryMatcher {
      */
     public static final Map<String, String> SYNONYMS = Map.ofEntries(
             Map.entry("context window", "context_window_tokens"),
+            Map.entry("ctx window", "context_window_tokens"),
+            Map.entry("context length", "context_window_tokens"),
             Map.entry("max output", "max_output_tokens"),
             Map.entry("maximum output", "max_output_tokens"),
             Map.entry("output tokens", "max_output_tokens"),
