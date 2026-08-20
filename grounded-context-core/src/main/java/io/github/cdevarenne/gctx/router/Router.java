@@ -18,7 +18,8 @@ public final class Router {
 
     /** Asks for an exact value that must never be ranked. */
     static final List<String> PRECISION_SIGNALS = List.of(
-            "context window", "max tokens", "max output", "maximum output", "output limit",
+            "context window", "ctx window", "context length",
+            "max tokens", "max output", "maximum output", "output limit",
             "endpoint", "rate limit", "model id", "model string", "alias", "version", "exact",
             "how many", "how much", "what is the value of", "price", "pricing", "cost per");
 
@@ -32,7 +33,10 @@ public final class Router {
             "difference between");
 
     /** Cross-entity: the same exact field asked of two entities. Worth asking both engines. */
-    static final List<String> COMPARISON_SIGNALS = List.of("compare", " vs ", " versus ");
+    // Comparatives name a cross-entity question without using the word "compare".
+    static final List<String> COMPARISON_SIGNALS = List.of(
+            "compare", " vs ", " versus ",
+            "cheaper", "more expensive", "less expensive", "compared to");
 
     /** A pinned or aliased Claude model id appearing verbatim in the query. */
     static final Pattern MODEL_ID = Pattern.compile("claude-[a-z0-9.-]+", Pattern.CASE_INSENSITIVE);
@@ -51,7 +55,8 @@ public final class Router {
 
         if (!comparison.isEmpty()) {
             return new Route(Route.BOTH, "cross-entity comparison (" + quote(comparison)
-                    + ") — query both, prefer an exact hit where one exists");
+                    + ") — exact values are required, so a deterministic miss refuses rather"
+                    + " than falling back to passages", true);
         }
 
         if (!precision.isEmpty() && !exploratory.isEmpty()) {

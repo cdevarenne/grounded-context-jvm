@@ -12,6 +12,7 @@ import io.github.cdevarenne.gctx.provenance.Renderer;
 import io.github.cdevarenne.gctx.router.Route;
 import io.github.cdevarenne.gctx.router.Router;
 import io.github.cdevarenne.gctx.service.GroundedContextService;
+import io.github.cdevarenne.gctx.service.SemanticSearch;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -265,5 +266,59 @@ class CoreBehaviourTest {
         assertThat(cite.get().asMap()).containsOnlyKeys(
                 "path", "source_id", "source_url", "locator", "method", "score", "verified_at",
                 "trust_tier", "status", "stale_after", "is_stale", "hops", "snippet");
+    }
+
+    // --- the precision exception to the BOTH fallback (docs/specs/router.md) -----------
+
+    /** Routes to BOTH as a comparison, and "cheaper" maps to no single canonical field. */
+    static final String PRECISION_MISS_QUERY = "Is Sonnet 5 cheaper than Opus 5?";
+
+    @Test
+    void a_cross_entity_comparison_is_marked_precision() {
+        Route decision = Router.route(PRECISION_MISS_QUERY);
+        assertThat(decision.route()).isEqualTo(Route.BOTH);
+        assertThat(decision.precision()).isTrue();
+    }
+
+    @Test
+    void an_ambiguous_both_is_not_marked_precision() {
+        Route decision = Router.route("Which of these models support vision?");
+        assertThat(decision.route()).isEqualTo(Route.BOTH);
+        assertThat(decision.precision()).isFalse();
+    }
+
+    @Test
+    void precision_is_not_serialized() {
+        // The envelope's router block is a published contract; its shape does not change.
+        assertThat(Router.route("compare a and b").asMap()).containsOnlyKeys("route", "rationale");
+    }
+
+    @Test
+    void a_precision_miss_refuses_instead_of_ranking() {
+        // A comparison asks for exact values. Passages about an adjacent topic are not an
+        // answer to it — they are a plausible, cited, wrong one.
+        SemanticSearch passages = (query, size) -> List.of(new Citation(
+                Citation.SEMANTIC, "elastic-rrf", "https://example.test", "chunk:1",
+                "hybrid(bm25+elser,rrf)", 0.09, null, null, null, null, false, List.of(),
+                "rank_constant determines influence."));
+        Envelope envelope = new GroundedContextService(Bundle.load(ROOT), passages)
+                .ask(PRECISION_MISS_QUERY, FRESH);
+
+        assertThat(envelope.answer()).isEqualTo(Envelope.NOT_FOUND);
+        assertThat(envelope.citations()).isEmpty();
+    }
+
+    @Test
+    void an_ambiguous_both_still_falls_back_to_passages() {
+        // The exception is narrow. Only a comparison switches the fallback off.
+        SemanticSearch passages = (query, size) -> List.of(new Citation(
+                Citation.SEMANTIC, "elastic-rrf", "https://example.test", "chunk:1",
+                "hybrid(bm25+elser,rrf)", 0.09, null, null, null, null, false, List.of(),
+                "rank_constant determines influence."));
+        Envelope envelope = new GroundedContextService(Bundle.load(ROOT), passages)
+                .ask("Which of these models support vision?", FRESH);
+
+        assertThat(envelope.answer()).isEqualTo("rank_constant determines influence.");
+        assertThat(envelope.citations()).hasSize(1);
     }
 }

@@ -146,10 +146,18 @@ public final class GroundedContextService {
         return envelope;
     }
 
-    /** router.md: query both, prefer an exact hit where one exists, never drop provenance. */
+    /**
+     * router.md: query both, prefer an exact hit where one exists, never drop provenance.
+     *
+     * <p>One exception, and it is the point of the whole design: when the router identified a
+     * precision question — a cross-entity comparison asks for exact values by construction — a
+     * deterministic miss is a <em>curation gap</em>, not an invitation to rank. Falling back
+     * there is exactly the failure this project exists to prevent: a plausible, cited, adjacent
+     * answer to a question that had a right one. So it refuses instead.
+     */
     private Envelope merge(Envelope exact, List<Citation> extra, Route decision) {
         if (exact.isRefusal()) {
-            return semanticAnswer(extra, decision);
+            return decision.precision() ? exact : semanticAnswer(extra, decision);
         }
         if (extra.isEmpty()) {
             return exact;
