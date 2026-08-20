@@ -28,7 +28,7 @@ implementations against the reference index (`grounded-context-corpus`, 320 chun
 | CLI | 7 commands, stdout + exit codes | byte-identical |
 | Semantic path | 4 queries incl. an out-of-domain refusal | byte-identical |
 | MCP | instructions, tool schemas, 6 tool calls | byte-identical |
-| Eval set | all 12 questions, verdicts and routes | byte-identical |
+| Eval set | all 18 questions, verdicts and routes | byte-identical |
 | Compare table | all 8 rows of the arm comparison | byte-identical |
 | Findings sweep | every corpus-wide aggregate, 17 probes | byte-identical |
 | Telemetry summary | `gctx telemetry summary` over the same 26-event log | byte-identical |

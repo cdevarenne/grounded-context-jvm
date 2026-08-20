@@ -263,7 +263,7 @@ These are pinned to the *reference* corpus, so they are useful for checking your
 your documents:
 
 ```bash
-gctx eval                          # the 12-question set, with verdicts
+gctx eval                          # the 18-question set, with verdicts
 gctx eval --compare rank_constant  # ELSER vs BM25 vs hybrid, for one query
 gctx measure                       # the corpus-wide figures behind the findings
 ```

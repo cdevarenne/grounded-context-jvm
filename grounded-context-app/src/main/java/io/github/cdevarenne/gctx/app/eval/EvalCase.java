@@ -60,5 +60,23 @@ public record EvalCase(String id, String question, String expected, String note,
             new EvalCase("Q11", "What is the price per million tokens of GPT-5?",
                     REFUSAL, "guardrail: absent from both the bundle and the corpus"),
             new EvalCase("Q12", "What is the exact context window of claude-haiku-4-5?",
-                    Envelope.DETERMINISTIC, "shows OKF verified / stale_after on a governed fact"));
+                    Envelope.DETERMINISTIC, "shows OKF verified / stale_after on a governed fact"),
+            // --- paraphrases: the same canonical facts, asked the way a person types them ---
+            // Q1-Q12 all name the canonical identifier verbatim, which is how a bug that broke
+            // every natural phrasing survived a green suite. These ask for facts the bundle
+            // holds without using its vocabulary, so they fail when matching or routing
+            // regresses.
+            new EvalCase("Q13", "Whats the ctx window for opus",
+                    Envelope.DETERMINISTIC, "abbreviated field, bare alias, no punctuation"),
+            new EvalCase("Q14", "How big is the Opus 5 context window?",
+                    Envelope.DETERMINISTIC, "natural interrogative, spaced alias"),
+            new EvalCase("Q15", "What is the context length of Sonnet 5",
+                    Envelope.DETERMINISTIC, "field synonym rather than the canonical field name"),
+            new EvalCase("Q16", "Haiku 4.5 max output",
+                    Envelope.DETERMINISTIC, "dotted version alias, no question form"),
+            new EvalCase("Q17", "the Opus model endpoint",
+                    Envelope.DETERMINISTIC, "alias plus a one-hop traversal to the endpoint concept"),
+            new EvalCase("Q18", "Is Sonnet 5 cheaper than Opus 5?",
+                    REFUSAL, "precision exception: a comparison the bundle cannot answer refuses "
+                            + "rather than falling back to passages (router.md)"));
 }

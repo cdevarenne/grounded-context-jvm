@@ -104,7 +104,7 @@ find one belonging to a sibling checkout.
 
 ```bash
 java -jar grounded-context-app/target/gctx.jar ask "How should I chunk documents for retrieval?"
-java -jar grounded-context-app/target/gctx.jar eval                                  # the 12-question set
+java -jar grounded-context-app/target/gctx.jar eval                                  # the 18-question set
 java -jar grounded-context-app/target/gctx.jar eval --compare rank_constant          # ELSER vs BM25 vs hybrid
 java -jar grounded-context-app/target/gctx.jar measure                               # the corpus-wide figures
 ```
@@ -212,7 +212,7 @@ a sign of a broken checkout. The reports say which tests ran and which were skip
 | CLI (`lookup` / `ask` / `route` / `entities`) | ✅ byte-identical to the Python CLI |
 | Elasticsearch hybrid path (BM25 + ELSER, RRF) | ✅ same index, ranks reproduce |
 | MCP server (3 tools, stdio) | ✅ same tool contract, protocol 2025-11-25 |
-| Eval harness (`eval`, `eval --compare`) | ✅ 11 pass + 1 declared deviation |
+| Eval harness (`eval`, `eval --compare`) | ✅ 18 questions, 17 pass + 1 declared deviation |
 | Findings sweep (`measure`) | ✅ reproduces every published aggregate |
 | Corpus indexer (`index`) | ✅ chunking byte-identical to the reference index |
 | Bundle drift check against the Python repo | ✅ fails on divergence, skips when absent |
