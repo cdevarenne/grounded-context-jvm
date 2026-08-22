@@ -221,7 +221,7 @@ a sign of a broken checkout. The reports say which tests ran and which were skip
 | Test suite | ✅ JUnit XML from both builds, HTML from Gradle; cluster tests skip without credentials |
 | Embabel ingestion / post-search actions | ⬜ [#3](https://github.com/cdevarenne/grounded-context-jvm/issues/3), via the `SemanticSearch` seam |
 
-**What's next.** Work to be done is tracked as [GitHub issues](https://github.com/cdevarenne/grounded-context-jvm/issues).
+**What's next.** Work to be done is tracked in [GitHub issues](https://github.com/cdevarenne/grounded-context-jvm/issues).
 
 ---
 
